@@ -1,0 +1,195 @@
+#pragma once
+
+#include <asio.hpp>
+
+#include <deque>
+#include <fstream>
+
+#include "ftp_message.h"
+
+#include "filesystem.h"
+#include "user_database.h"
+#include "ftp_user.h"
+
+namespace fineftp
+{
+  class FtpSession
+    : public std::enable_shared_from_this<FtpSession>
+  {
+  private:
+    struct IoFile
+    {
+      IoFile(const char* filename, std::ios::openmode mode)
+        : file_stream_(filename, mode)
+        , stream_buffer_(1024 * 1024)
+      {
+        file_stream_.rdbuf()->pubsetbuf(stream_buffer_.data(), static_cast<std::streamsize>(stream_buffer_.size()));
+      }
+
+      ~IoFile()
+      {
+        file_stream_.flush();
+        file_stream_.close();
+      }
+
+      IoFile(const std::string& filename, std::ios::openmode mode)
+        : IoFile(filename.c_str(), mode)
+      {}
+
+      std::fstream      file_stream_;
+      std::vector<char> stream_buffer_;
+    };
+
+  ////////////////////////////////////////////////////////
+  // Public API
+  ////////////////////////////////////////////////////////
+  public:
+    FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler);
+
+    ~FtpSession();
+
+    void start();
+
+    asio::ip::tcp::socket& getSocket();
+
+  ////////////////////////////////////////////////////////
+  // FTP command-socket
+  ////////////////////////////////////////////////////////
+  private:
+    void sendFtpMessage(const FtpMessage& message);
+    void sendFtpMessage(FtpReplyCode code, const std::string& message);
+    void startSendingMessages();
+    void readFtpCommand();
+
+    void handleFtpCommand(const std::string& command);
+
+  ////////////////////////////////////////////////////////
+  // FTP Commands
+  ////////////////////////////////////////////////////////
+  private:
+    // Access control commands
+    FtpMessage handleFtpCommandUSER(const std::string& param);
+    FtpMessage handleFtpCommandPASS(const std::string& param);
+    FtpMessage handleFtpCommandACCT(const std::string& param);
+    FtpMessage handleFtpCommandCWD(const std::string& param);
+    FtpMessage handleFtpCommandCDUP(const std::string& param);
+    FtpMessage handleFtpCommandREIN(const std::string& param);
+    FtpMessage handleFtpCommandQUIT(const std::string& param);
+
+    // Transfer parameter commands
+    FtpMessage handleFtpCommandPORT(const std::string& param);
+    FtpMessage handleFtpCommandPASV(const std::string& param);
+    FtpMessage handleFtpCommandTYPE(const std::string& param);
+    FtpMessage handleFtpCommandSTRU(const std::string& param);
+    FtpMessage handleFtpCommandMODE(const std::string& param);
+
+    // Ftp service commands
+    FtpMessage handleFtpCommandRETR(const std::string& param);
+    FtpMessage handleFtpCommandSTOR(const std::string& param);
+    FtpMessage handleFtpCommandSTOU(const std::string& param);
+    FtpMessage handleFtpCommandAPPE(const std::string& param);
+    FtpMessage handleFtpCommandALLO(const std::string& param);
+    FtpMessage handleFtpCommandREST(const std::string& param);
+    FtpMessage handleFtpCommandRNFR(const std::string& param);
+    FtpMessage handleFtpCommandRNTO(const std::string& param);
+    FtpMessage handleFtpCommandABOR(const std::string& param);
+    FtpMessage handleFtpCommandDELE(const std::string& param);
+    FtpMessage handleFtpCommandRMD(const std::string& param);
+    FtpMessage handleFtpCommandMKD(const std::string& param);
+    FtpMessage handleFtpCommandPWD(const std::string& param);
+    FtpMessage handleFtpCommandLIST(const std::string& param);
+    FtpMessage handleFtpCommandNLST(const std::string& param);
+    FtpMessage handleFtpCommandSITE(const std::string& param);
+    FtpMessage handleFtpCommandSYST(const std::string& param);
+    FtpMessage handleFtpCommandSTAT(const std::string& param);
+    FtpMessage handleFtpCommandHELP(const std::string& param);
+    FtpMessage handleFtpCommandNOOP(const std::string& param);
+
+  ////////////////////////////////////////////////////////
+  // FTP data-socket send
+  ////////////////////////////////////////////////////////
+  private:
+
+    void sendDirectoryListing   (const std::map<std::string, Filesystem::FileStatus>& directory_content);
+    void sendNameList           (const std::map<std::string, Filesystem::FileStatus>& directory_content);
+
+    void sendFile               (std::shared_ptr<IoFile>                file);
+
+    void readDataFromFileAndSend(std::shared_ptr<IoFile>                file
+                               , std::shared_ptr<asio::ip::tcp::socket> data_socket);
+
+    void addDataToBufferAndSend (std::shared_ptr<std::vector<char>>     data
+                               , std::shared_ptr<asio::ip::tcp::socket> data_socket
+                               , std::function<void(void)>              fetch_more = []() {return; });
+
+    void writeDataToSocket      (std::shared_ptr<asio::ip::tcp::socket> data_socket
+                               , std::function<void(void)>              fetch_more);
+
+  ////////////////////////////////////////////////////////
+  // FTP data-socket receive
+  ////////////////////////////////////////////////////////
+  private:
+    void receiveFile(std::shared_ptr<IoFile> file);
+
+    void receiveDataFromSocketAndWriteToFile(std::shared_ptr<IoFile>                file
+                                           , std::shared_ptr<asio::ip::tcp::socket> data_socket);
+
+    void writeDataToFile(std::shared_ptr<std::vector<char>> data
+                       , std::shared_ptr<IoFile>            file
+                       , std::function<void(void)>          fetch_more = []() {return; });
+
+  ////////////////////////////////////////////////////////
+  // Helpers
+  ////////////////////////////////////////////////////////
+  private:
+    std::string toLocalPath(const std::string& ftp_path) const;
+    std::string createQuotedFtpPath(const std::string& unquoted_ftp_path) const;
+
+    /** @brief Checks if a path is renamable
+    *
+    * Checks if the current user can rename the given path. A path is renameable
+    * if it exists, a user is logged in and the user has sufficient permissions
+    * (file / dir / both) to rename it.
+    *
+    * @param ftp_path: The source path
+    * 
+    * @return (COMMAND_OK, "") if the path can be renamed or any other meaningfull error message if not.
+    */
+    FtpMessage checkIfPathIsRenamable(const std::string& ftp_path) const;
+
+  ////////////////////////////////////////////////////////
+  // Member variables
+  ////////////////////////////////////////////////////////
+  private:
+    // Completion handler
+    const std::function<void()> completion_handler_;
+
+    // User management
+    const UserDatabase&      user_database_;
+    std::shared_ptr<FtpUser> logged_in_user_;
+
+    // "Global" io service
+    asio::io_service&        io_service_;
+
+    // Command Socket
+    asio::ip::tcp::socket    command_socket_;
+    asio::io_service::strand command_write_strand_;
+    asio::streambuf          command_input_stream_;
+    std::deque<std::string>  command_output_queue_;
+
+    std::string last_command_;
+    std::string rename_from_path_;
+    std::string username_for_login_;
+
+    // Data Socket (=> passive mode)
+    bool                                           data_type_binary_;
+    asio::ip::tcp::acceptor                        data_acceptor_;
+    std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_; // TODO: use
+    std::deque<std::shared_ptr<std::vector<char>>> data_buffer_; // TODO: close data port when the control port closes
+    asio::io_service::strand                       data_buffer_strand_;
+    asio::io_service::strand                       file_rw_strand_;
+
+    // Current state
+    std::string ftp_working_directory_;
+  };
+}

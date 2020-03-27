@@ -1,0 +1,13 @@
+*Debug
+ipch
+
+*.sdf
+*.suo
+*.aps
+*.user
+*.opendb
+*.db
+/_build
+/_install
+/.vs
+/CMakeLists.txt.user
