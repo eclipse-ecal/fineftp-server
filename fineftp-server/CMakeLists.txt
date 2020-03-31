@@ -71,6 +71,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 if (MSVC)
     # Mirror the folder structure with Visual Studio filters
+    include(../msvc_sourcetree.cmake)
     msvc_source_tree(${includes} ${sources})
 endif()
 
