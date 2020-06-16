@@ -4,7 +4,6 @@ project(example)
 
 set(CMAKE_CXX_STANDARD 14)
 
-find_package(asio REQUIRED)
 find_package(fineftp REQUIRED CONFIG)
 
 set(sources

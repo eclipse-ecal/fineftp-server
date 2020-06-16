@@ -44,8 +44,8 @@ target_link_libraries(${PROJECT_NAME}
         Threads::Threads
 )
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC ASIO_STANDALONE)
-target_compile_definitions(${PROJECT_NAME} PUBLIC __USE_FILE_OFFSET64=1)
+target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE)
+target_compile_definitions(${PROJECT_NAME} PRIVATE __USE_FILE_OFFSET64=1)
 target_compile_definitions(${PROJECT_NAME} PRIVATE _WIN32_WINNT=0x0601)
 
 
