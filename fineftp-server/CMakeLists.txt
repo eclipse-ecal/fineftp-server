@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.5.1)
 
 project(server)
-set(PROJECT_VERSION_STRING 0.1.0)
-set(PROJECT_VERSION_MAJOR 0)
+set(PROJECT_VERSION_STRING 1.0.3)
+set(PROJECT_VERSION_MAJOR 1)
+set(PROJECT_VERSION_MINOR 0)
+set(PROJECT_VERSION_PATCH 3)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -40,9 +42,11 @@ add_library (fineftp::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        asio::asio
         Threads::Threads
 )
+
+# Link asio as described in this workaround: https://gitlab.kitware.com/cmake/cmake/-/issues/15415#note_633938
+target_link_libraries     (${PROJECT_NAME} PRIVATE $<BUILD_INTERFACE:asio::asio>)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE)
 target_compile_definitions(${PROJECT_NAME} PRIVATE __USE_FILE_OFFSET64=1)

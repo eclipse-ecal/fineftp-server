@@ -694,7 +694,7 @@ namespace fineftp
 
     if (ret == 0)
     {
-      return FtpMessage(FtpReplyCode::PATHNAME_CREATED, "Successfully created directory " + createQuotedFtpPath(local_path));
+      return FtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
     }
     else
     {
@@ -1065,21 +1065,28 @@ namespace fineftp
                         });
   }
 
+  std::string FtpSession::toAbsoluateFtpPath(const std::string& rel_or_abs_ftp_path) const
+  {
+    std::string absolute_ftp_path;
+
+    if (!rel_or_abs_ftp_path.empty() && (rel_or_abs_ftp_path[0] == '/'))
+    {
+      absolute_ftp_path = rel_or_abs_ftp_path;
+    }
+    else
+    {
+      absolute_ftp_path = fineftp::Filesystem::cleanPath(ftp_working_directory_ + "/" + rel_or_abs_ftp_path, false, '/');
+    }
+
+    return absolute_ftp_path;
+  }
+
   std::string FtpSession::toLocalPath(const std::string& ftp_path) const
   {
     assert(logged_in_user_);
 
     // First make the ftp path absolute if it isn't already
-    std::string absolute_ftp_path;
-
-    if (!ftp_path.empty() && (ftp_path[0] == '/'))
-    {
-      absolute_ftp_path = ftp_path;
-    }
-    else
-    {
-      absolute_ftp_path = fineftp::Filesystem::cleanPath(ftp_working_directory_ + "/" + ftp_path, false, '/');
-    }
+    std::string absolute_ftp_path = toAbsoluateFtpPath(ftp_path);
 
     // Now map it to the local filesystem
     return fineftp::Filesystem::cleanPathNative(logged_in_user_->local_root_path_ + "/" + absolute_ftp_path);
@@ -1094,7 +1101,7 @@ namespace fineftp
     for (char c : unquoted_ftp_path)
     {
       output.push_back(c);
-      if (c == '\"')
+      if (c == '\"')            // Escape quote by double-quote
         output.push_back(c);
     }
 
