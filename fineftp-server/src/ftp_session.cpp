@@ -591,6 +591,16 @@ namespace fineftp
         return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Target path exists already.");
       }
 
+#ifdef WIN32
+      if (MoveFileA(local_from_path.c_str(), local_to_path.c_str()) != 0)
+      {
+        return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
+      }
+      else
+      {
+        return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file: " + GetLastErrorStr());
+      }
+#else // WIN32
       if (rename(local_from_path.c_str(), local_to_path.c_str()) == 0)
       {
         return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
@@ -599,6 +609,7 @@ namespace fineftp
       {
         return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file");
       }
+#endif // WIN32
     }
     else
     {
@@ -635,12 +646,16 @@ namespace fineftp
       else
       {
 #ifdef WIN32
-        int ret = _unlink(local_path.c_str());
+        if (DeleteFileA(local_path.c_str()) != 0)
+        {
+          return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
+        }
+        else
+        {
+          return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Unable to delete file: " + GetLastErrorStr());
+        }
 #else
-        int ret = unlink(local_path.c_str());
-#endif
-
-        if (ret == 0)
+        if (unlink(local_path.c_str()) == 0)
         {
           return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
         }
@@ -648,6 +663,7 @@ namespace fineftp
         {
           return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Unable to delete file");
         }
+#endif
       }
     }
   }
@@ -660,12 +676,19 @@ namespace fineftp
     std::string local_path = toLocalPath(param);
 
 #ifdef WIN32
-    int ret = _rmdir(local_path.c_str());
+    if (RemoveDirectoryA(local_path.c_str()) != 0)
+    {
+      return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
+    }
+    else
+    {
+      // If would be a good idea to return a 4xx error code here (-> temp error)
+      // (e.g. FILE_ACTION_NOT_TAKEN), but RFC 959 assumes that all directory
+      // errors are permanent.
+      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to remove directory: " + GetLastErrorStr());
+    }
 #else
-    int ret = rmdir(local_path.c_str());
-#endif
-
-    if (ret == 0)
+    if (rmdir(local_path.c_str()) == 0)
     {
       return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
     }
@@ -676,6 +699,8 @@ namespace fineftp
       // errors are permanent.
       return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to remove directory");
     }
+#endif
+
   }
 
   FtpMessage FtpSession::handleFtpCommandMKD(const std::string& param)
@@ -686,13 +711,21 @@ namespace fineftp
     auto local_path = toLocalPath(param);
 
 #ifdef WIN32
-    int ret = _mkdir(local_path.c_str());
+    LPSECURITY_ATTRIBUTES security_attributes = NULL; // => Default security attributes
+    if (CreateDirectoryA(local_path.c_str(), security_attributes) != 0)
+    {
+      return FtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
+    }
+    else
+    {
+      // If would be a good idea to return a 4xx error code here (-> temp error)
+      // (e.g. FILE_ACTION_NOT_TAKEN), but RFC 959 assumes that all directory
+      // errors are permanent.
+      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to create directory: " + GetLastErrorStr());
+    }
 #else
     mode_t mode = 0755;
-    int ret = mkdir(local_path.c_str(), mode);
-#endif
-
-    if (ret == 0)
+    if (mkdir(local_path.c_str(), mode) == 0)
     {
       return FtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
     }
@@ -703,6 +736,7 @@ namespace fineftp
       // errors are permanent.
       return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to create directory");
     }
+#endif
   }
 
   FtpMessage FtpSession::handleFtpCommandPWD(const std::string& /*param*/)
@@ -1150,4 +1184,36 @@ namespace fineftp
       return FtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "Empty path");
     }
   }
+
+#ifdef WIN32
+  std::string FtpSession::GetLastErrorStr() const
+  {
+    DWORD error = GetLastError();
+    if (error)
+    {
+      LPVOID lp_msg_buf;
+      DWORD buf_len = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+                                    FORMAT_MESSAGE_FROM_SYSTEM |
+                                    FORMAT_MESSAGE_IGNORE_INSERTS,
+                                    NULL,
+                                    error,
+                                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                    (LPTSTR) &lp_msg_buf,
+                                    0, NULL );
+      if (buf_len)
+      {
+        LPCSTR lp_msg_str = (LPCSTR)lp_msg_buf;
+        std::string result(lp_msg_str, lp_msg_str + buf_len);
+
+        LocalFree(lp_msg_buf);
+
+        return result;
+      }
+    }
+    else
+    {
+      return ""; 
+    }
+  }
+#endif //WIN32
 }

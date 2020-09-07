@@ -158,6 +158,14 @@ namespace fineftp
     */
     FtpMessage checkIfPathIsRenamable(const std::string& ftp_path) const;
 
+#ifdef WIN32
+    /**
+     * @brief Returns Windows' GetLastError() as human readable string
+     * @return Rhe message of the last error
+     */
+    std::string GetLastErrorStr() const;
+#endif // WIN32
+
   ////////////////////////////////////////////////////////
   // Member variables
   ////////////////////////////////////////////////////////
