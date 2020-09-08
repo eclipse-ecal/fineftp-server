@@ -1210,10 +1210,8 @@ namespace fineftp
         return result;
       }
     }
-    else
-    {
-      return ""; 
-    }
+
+    return ""; 
   }
 #endif //WIN32
 }
