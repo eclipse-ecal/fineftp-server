@@ -1071,12 +1071,11 @@ namespace fineftp
                         buffer->resize(length);
                         if (ec)
                         {
-
-                          me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                           if (length > 0)
                           {
                             me->writeDataToFile(buffer, file);
                           }
+                          me->endDataReceiving();
                           return;
                         }
                         else if (length > 0)
@@ -1086,9 +1085,6 @@ namespace fineftp
                       });
   }
 
-  ////////////////////////////////////////////////////////
-  // Helpers
-  ////////////////////////////////////////////////////////
 
   void FtpSession::writeDataToFile(std::shared_ptr<std::vector<char>> data, std::shared_ptr<IoFile> file, std::function<void(void)> fetch_more)
   {
@@ -1098,6 +1094,18 @@ namespace fineftp
                           file->file_stream_.write(data->data(), static_cast<std::streamsize>(data->size()));
                         });
   }
+
+  void FtpSession::endDataReceiving()
+  {
+    file_rw_strand_.post([me = shared_from_this()]
+                        {
+                          me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                        });
+  }
+
+  ////////////////////////////////////////////////////////
+  // Helpers
+  ////////////////////////////////////////////////////////
 
   std::string FtpSession::toAbsoluateFtpPath(const std::string& rel_or_abs_ftp_path) const
   {
