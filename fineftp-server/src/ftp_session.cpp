@@ -1212,7 +1212,10 @@ namespace fineftp
       {
         LPCSTR lp_msg_str = (LPCSTR)lp_msg_buf;
         std::string result(lp_msg_str, lp_msg_str + buf_len);
-
+        result.erase(std::remove_if(result.begin(),
+                                    result.end(),
+                                    [](unsigned char x) {return std::iscntrl(x); }),
+                     result.end()); //remove CRLF
         LocalFree(lp_msg_buf);
 
         return result;

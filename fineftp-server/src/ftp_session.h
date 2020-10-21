@@ -163,7 +163,7 @@ namespace fineftp
 #ifdef WIN32
     /**
      * @brief Returns Windows' GetLastError() as human readable string
-     * @return Rhe message of the last error
+     * @return The message of the last error
      */
     std::string GetLastErrorStr() const;
 #endif // WIN32
