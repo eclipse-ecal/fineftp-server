@@ -9,7 +9,14 @@ namespace fineftp
 {
 
   FtpServerImpl::FtpServerImpl(uint16_t port)
-    : port_                 (port)
+      : port_                 (port)
+      , acceptor_             (io_service_)
+      , open_connection_count_(0)
+  {}
+
+  FtpServerImpl::FtpServerImpl(const std::string& address, uint16_t port)
+    : address_              (address)
+    , port_                 (port)
     , acceptor_             (io_service_)
     , open_connection_count_(0)
   {}
@@ -33,9 +40,7 @@ namespace fineftp
   {
     auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
 
-    // set up the acceptor to listen on the tcp port
-    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port_);
-    
+    asio::ip::tcp::endpoint endpoint = getEndpoint();
     {
       asio::error_code ec;
       acceptor_.open(endpoint.protocol(), ec);
@@ -140,5 +145,22 @@ namespace fineftp
   uint16_t FtpServerImpl::getPort()
   {
     return acceptor_.local_endpoint().port();
+  }
+
+  std::string FtpServerImpl::getAddress()
+  {
+      return acceptor_.local_endpoint().address().to_string();
+  }
+
+  asio::ip::tcp::endpoint FtpServerImpl::getEndpoint()
+  {
+      if (address_.empty())
+      {
+          return asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port_);
+      }
+      else
+      {
+          return asio::ip::tcp::endpoint(asio::ip::address::from_string(address_), port_);
+      }
   }
 }

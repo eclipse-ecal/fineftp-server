@@ -46,6 +46,7 @@ namespace fineftp
      * @param port: The port to start the FTP server on. Defaults to 21.
      */
     FtpServer(uint16_t port = 21);
+    FtpServer(const std::string address, uint16_t port = 21);
 
     ~FtpServer();
 
@@ -117,6 +118,7 @@ namespace fineftp
      * @return The control port the server is listening on
      */
     uint16_t getPort() const;
+    std::string getAddress() const;
 
     // Non-copyable
     FtpServer(const FtpServer&) = delete;

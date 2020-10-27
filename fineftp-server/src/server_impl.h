@@ -17,6 +17,7 @@ namespace fineftp
   {
   public:
     FtpServerImpl(uint16_t port);
+    FtpServerImpl(const std::string& address, uint16_t port);
 
     ~FtpServerImpl();
 
@@ -30,14 +31,18 @@ namespace fineftp
     int getOpenConnectionCount();
 
     uint16_t getPort(); 
+    std::string getAddress();
 
   private:
     void acceptFtpSession(std::shared_ptr<FtpSession> ftp_session, asio::error_code const& error);
+
+    asio::ip::tcp::endpoint getEndpoint();
 
   private:
     UserDatabase   ftp_users_;
 
     const uint16_t port_;
+    const std::string address_;
 
     std::vector<std::thread> thread_pool_;
     asio::io_service         io_service_;
