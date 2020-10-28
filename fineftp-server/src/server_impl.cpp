@@ -150,18 +150,18 @@ namespace fineftp
 
   std::string FtpServerImpl::getAddress() const
   {
-      return acceptor_.local_endpoint().address().to_string();
+    return acceptor_.local_endpoint().address().to_string();
   }
 
   asio::ip::tcp::endpoint FtpServerImpl::getEndpoint()
   {
-      if (address_ == no_address_ || address_.empty())
-      {
-          return asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port_);
-      }
-      else
-      {
-          return asio::ip::tcp::endpoint(asio::ip::address::from_string(address_), port_);
-      }
+    if (address_ == no_address_ || address_.empty())
+    {
+      return asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port_);
+    }
+    else
+    {
+      return asio::ip::tcp::endpoint(asio::ip::address::from_string(address_), port_);
+    }
   }
 }
