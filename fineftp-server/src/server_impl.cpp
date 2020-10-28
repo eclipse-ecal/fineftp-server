@@ -9,7 +9,8 @@ namespace fineftp
 {
 
   FtpServerImpl::FtpServerImpl(uint16_t port)
-      : port_                 (port)
+      : address_              (no_address_)
+      , port_                 (port)
       , acceptor_             (io_service_)
       , open_connection_count_(0)
   {}
@@ -142,19 +143,19 @@ namespace fineftp
     return open_connection_count_;
   }
 
-  uint16_t FtpServerImpl::getPort()
+  uint16_t FtpServerImpl::getPort() const
   {
     return acceptor_.local_endpoint().port();
   }
 
-  std::string FtpServerImpl::getAddress()
+  std::string FtpServerImpl::getAddress() const
   {
       return acceptor_.local_endpoint().address().to_string();
   }
 
   asio::ip::tcp::endpoint FtpServerImpl::getEndpoint()
   {
-      if (address_.empty())
+      if (address_ == no_address_ || address_.empty())
       {
           return asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port_);
       }

@@ -30,8 +30,8 @@ namespace fineftp
 
     int getOpenConnectionCount();
 
-    uint16_t getPort(); 
-    std::string getAddress();
+    uint16_t getPort() const; 
+    std::string getAddress() const;
 
   private:
     void acceptFtpSession(std::shared_ptr<FtpSession> ftp_session, asio::error_code const& error);
@@ -42,7 +42,8 @@ namespace fineftp
     UserDatabase   ftp_users_;
 
     const uint16_t port_;
-    const std::string address_;
+    const std::string& address_;
+    const std::string no_address_ = "NO_ADDRESS";
 
     std::vector<std::thread> thread_pool_;
     asio::io_service         io_service_;

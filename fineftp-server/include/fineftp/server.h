@@ -36,6 +36,11 @@ namespace fineftp
     /**
      * @brief Creates an FTP Server instance that will listen on the the given control port.
      * 
+     * The FTP server will bind to an IP address of a local network interface
+     * chosen by the operating system.
+     * 
+     * The chosen address can be determined by with getAddress().
+     * 
      * If no port is provided, the default FTP Port 21 is used. If you want to
      * use that port, make sure that your application runs as root.
      * 
@@ -46,7 +51,23 @@ namespace fineftp
      * @param port: The port to start the FTP server on. Defaults to 21.
      */
     FtpServer(uint16_t port = 21);
-    FtpServer(const std::string address, uint16_t port = 21);
+    /**
+     * @brief Creates an FTP Server instance that will listen on the given local endpoint.
+     * 
+     * By specifing an IP address of a local network interface, you can force
+     * the FTP server to be available on a certain network.
+     * 
+     * If no port is provided, the default FTP Port 21 is used. If you want to
+     * use that port, make sure that your application runs as root.
+     * 
+     * Instead of using a predefined port, the operating system can choose a
+     * free port port. Use port=0, if that behaviour is desired. The chosen port
+     * can be determined by with getPort().
+     * 
+     * @param address: The IP address of a local network interface the FTP server will bind to.
+     * @param port: The port to start the FTP server on. Defaults to 21.
+     */
+    FtpServer(const std::string &address, uint16_t port = 21);
 
     ~FtpServer();
 
@@ -71,8 +92,8 @@ namespace fineftp
      * 
      * @return True if adding the user was successful (i.e. it didn't exit already).
      */
-    bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions);
-    
+    bool addUser(const std::string &username, const std::string &password, const std::string &local_root_path, const Permission permissions);
+
     /**
      * @brief Adds the "anonymous" / "ftp" user that FTP clients use to access FTP servers without password
      * 
@@ -81,7 +102,7 @@ namespace fineftp
      * 
      * @return True if adding the anonymous user was successful (i.e. it didn't exit already).
      */
-    bool addUserAnonymous(const std::string& local_root_path, const Permission permissions);
+    bool addUserAnonymous(const std::string &local_root_path, const Permission permissions);
 
     /**
      * @brief Starts the FTP Server
@@ -118,14 +139,25 @@ namespace fineftp
      * @return The control port the server is listening on
      */
     uint16_t getPort() const;
+
+    /**
+     * @brief Get the IP address that the FTP server is listening on
+     *
+     * When the server was created with a specific IP address, that address will
+     * be returned.
+     * If the server however was created with an IP address chosen by the
+     * operating system, this method will return that IP address.
+     *
+     * @return The IP address the server is listening on
+     */
     std::string getAddress() const;
 
     // Non-copyable
-    FtpServer(const FtpServer&) = delete;
-    FtpServer& operator=(const FtpServer&) = delete;
+    FtpServer(const FtpServer &) = delete;
+    FtpServer &operator=(const FtpServer &) = delete;
 
   private:
-    std::unique_ptr<FtpServerImpl> ftp_server_;        /**< Implementation details */
+    std::unique_ptr<FtpServerImpl> ftp_server_; /**< Implementation details */
   };
 
-}
+} // namespace fineftp
