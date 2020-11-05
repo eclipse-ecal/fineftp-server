@@ -73,3 +73,11 @@ There is an example project provided that will create an FTP Server at `C:\` (Wi
 
 5. Start `example` / `example.exe` and connect with your favorite FTP Client (e.g. FileZilla) on port 2121 *(This port is used so you don't need root privileges to start the FTP server)*
 
+
+## Contribute
+
+Awesome, you want to contribute to FineFTP? Here is how you can do that!
+
+- Leave us a star ⭐️ (That's GitHub money!)
+- Create an issue and write about a feature you would like or a bug you have found (maybe we will find some spare time to implement it 😉)
+- Fork this repository, implement the feature yourself and create a pull request
