@@ -184,7 +184,7 @@ namespace Filesystem
       std::lock_guard<std::mutex> lock(mtx);
 
       now_timeinfo = *std::localtime(&now_time_t);
-      now_timeinfo = *std::localtime(&file_status_.st_ctime);
+      file_timeinfo = *std::localtime(&file_status_.st_ctime);
     }
 #endif
 
