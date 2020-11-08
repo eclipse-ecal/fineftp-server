@@ -45,6 +45,10 @@ target_link_libraries(${PROJECT_NAME}
         Threads::Threads
 )
 
+if(WIN32)
+  target_link_libraries(${PROJECT_NAME} PUBLIC wsock32 ws2_32)
+endif()
+
 # Link asio as described in this workaround: https://gitlab.kitware.com/cmake/cmake/-/issues/15415#note_633938
 target_link_libraries     (${PROJECT_NAME} PRIVATE $<BUILD_INTERFACE:asio::asio>)
 
