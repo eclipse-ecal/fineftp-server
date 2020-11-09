@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 #include <thread>
 #include <atomic>
 
@@ -16,7 +17,7 @@ namespace fineftp
   class FtpServerImpl
   {
   public:
-    FtpServerImpl(uint16_t port);
+    FtpServerImpl(uint16_t port, const std::string& address);
 
     ~FtpServerImpl();
 
@@ -31,6 +32,8 @@ namespace fineftp
 
     uint16_t getPort(); 
 
+    std::string getAddress();
+
   private:
     void acceptFtpSession(std::shared_ptr<FtpSession> ftp_session, asio::error_code const& error);
 
@@ -38,6 +41,7 @@ namespace fineftp
     UserDatabase   ftp_users_;
 
     const uint16_t port_;
+    const std::string address_;
 
     std::vector<std::thread> thread_pool_;
     asio::io_service         io_service_;

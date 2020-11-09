@@ -5,8 +5,8 @@
 
 namespace fineftp
 {
-  FtpServer::FtpServer(uint16_t port)
-    : ftp_server_(std::make_unique<FtpServerImpl>(port))
+  FtpServer::FtpServer(uint16_t port, const std::string& address)
+    : ftp_server_(std::make_unique<FtpServerImpl>(port, address))
   {}
 
   FtpServer::~FtpServer()
@@ -41,5 +41,10 @@ namespace fineftp
   uint16_t FtpServer::getPort() const
   {
     return ftp_server_->getPort();
+  }
+
+  std::string FtpServer::getAddress() const
+  {
+    return ftp_server_->getAddress();
   }
 }

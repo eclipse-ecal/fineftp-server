@@ -8,8 +8,9 @@
 namespace fineftp
 {
 
-  FtpServerImpl::FtpServerImpl(uint16_t port)
+  FtpServerImpl::FtpServerImpl(uint16_t port, const std::string& address)
     : port_                 (port)
+    , address_              (address)
     , acceptor_             (io_service_)
     , open_connection_count_(0)
   {}
@@ -34,7 +35,7 @@ namespace fineftp
     auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
 
     // set up the acceptor to listen on the tcp port
-    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port_);
+    asio::ip::tcp::endpoint endpoint(asio::ip::make_address(address_), port_);
     
     {
       asio::error_code ec;
@@ -77,7 +78,7 @@ namespace fineftp
     }
     
 #ifndef NDEBUG
-    std::cout << "FTP Server created. Listening on port " << acceptor_.local_endpoint().port() << std::endl;
+    std::cout << "FTP Server created." << std::endl << "Listening at address " << acceptor_.local_endpoint().address() << " on port " << acceptor_.local_endpoint().port() << ":" << std::endl;
 #endif // NDEBUG
 
     acceptor_.async_accept(ftp_session->getSocket()
@@ -140,5 +141,10 @@ namespace fineftp
   uint16_t FtpServerImpl::getPort()
   {
     return acceptor_.local_endpoint().port();
+  }
+
+  std::string FtpServerImpl::getAddress()
+  {
+    return acceptor_.local_endpoint().address().to_string();
   }
 }
