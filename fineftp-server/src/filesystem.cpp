@@ -3,6 +3,7 @@
 #include <list>
 #include <sstream>
 #include <mutex>
+#include <iomanip>
 
 #ifdef WIN32
 
@@ -214,12 +215,15 @@ namespace Filesystem
     if (file_year == current_year)
     {
       // We are allowed to return the time!
-      date << " " << file_timeinfo.tm_mday << " " << file_timeinfo.tm_hour << ":" << file_timeinfo.tm_min;
+      date << std::setw( 3 ) << file_timeinfo.tm_mday << " "
+           << std::setw( 2 ) << file_timeinfo.tm_hour << ":"
+           << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_min;
     }
     else
     {
       static constexpr auto tm_year_base_year = 1900;
-      date << " " << file_timeinfo.tm_mday << " " << ( file_timeinfo.tm_year + tm_year_base_year );
+      date << std::setw( 3 ) << file_timeinfo.tm_mday
+           << " " << ( file_timeinfo.tm_year + tm_year_base_year );
     }
 
     return month_names[file_timeinfo.tm_mon] + date.str();
