@@ -8,7 +8,7 @@
 namespace fineftp
 {
 
-  FtpServerImpl::FtpServerImpl(uint16_t port, const std::string& address)
+  FtpServerImpl::FtpServerImpl(const std::string& address, uint16_t port)
     : port_                 (port)
     , address_              (address)
     , acceptor_             (io_service_)
@@ -35,7 +35,13 @@ namespace fineftp
     auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
 
     // set up the acceptor to listen on the tcp port
-    asio::ip::tcp::endpoint endpoint(asio::ip::make_address(address_), port_);
+    asio::error_code make_address_ec;
+    asio::ip::tcp::endpoint endpoint(asio::ip::make_address(address_, make_address_ec), port_);
+    if (make_address_ec)
+    {
+      std::cerr << "Error creating address from string \"" << address_<< "\": " << make_address_ec.message() << std::endl;
+      return false;
+    }
     
     {
       asio::error_code ec;

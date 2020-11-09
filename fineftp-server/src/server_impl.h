@@ -17,7 +17,7 @@ namespace fineftp
   class FtpServerImpl
   {
   public:
-    FtpServerImpl(uint16_t port, const std::string& address);
+    FtpServerImpl(const std::string& address, uint16_t port);
 
     ~FtpServerImpl();
 
