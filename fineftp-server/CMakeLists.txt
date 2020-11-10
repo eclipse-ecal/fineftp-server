@@ -43,6 +43,8 @@ add_library (fineftp::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Threads::Threads
+        $<$<BOOL:${WIN32}>:ws2_32>
+        $<$<BOOL:${WIN32}>:wsock32>
 )
 
 # Link asio as described in this workaround: https://gitlab.kitware.com/cmake/cmake/-/issues/15415#note_633938
