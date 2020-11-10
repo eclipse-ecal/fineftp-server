@@ -221,9 +221,10 @@ namespace Filesystem
     }
     else
     {
+      // We must not return the time, only the date :(
       static constexpr auto tm_year_base_year = 1900;
       date << std::setw( 3 ) << file_timeinfo.tm_mday
-           << " " << ( file_timeinfo.tm_year + tm_year_base_year );
+           << "  " << ( file_timeinfo.tm_year + tm_year_base_year );
     }
 
     return month_names[file_timeinfo.tm_mon] + date.str();
