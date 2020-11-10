@@ -36,9 +36,8 @@ int main() {
   // replace "C:\\" with any valid path. FineFTP is designed to be cross-platform.
   ftp_server.addUserAnonymous("C:\\", fineftp::Permission::All);
   
-  // Start the FTP Server. By default, the FTP server will start
-  // single-threaded.
-  ftp_server.start();
+  // Start the FTP Server with a thread-pool size of 4.
+  ftp_server.start(4);
  
   // Prevent the application from exiting immediately
   for (;;) std::this_thread::sleep_for(std::chrono::milliseconds(100));
