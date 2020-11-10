@@ -3,6 +3,7 @@
 #include <list>
 #include <sstream>
 #include <mutex>
+#include <iomanip>
 
 #ifdef WIN32
 
@@ -184,7 +185,7 @@ namespace Filesystem
       std::lock_guard<std::mutex> lock(mtx);
 
       now_timeinfo = *std::localtime(&now_time_t);
-      now_timeinfo = *std::localtime(&file_status_.st_ctime);
+      file_timeinfo = *std::localtime(&file_status_.st_ctime);
     }
 #endif
 
@@ -209,20 +210,23 @@ namespace Filesystem
       "Dec"
     };
 
-    // Use strftime for the day and year / time
-    char date[80];
+    std::stringstream date;
+
     if (file_year == current_year)
     {
       // We are allowed to return the time!
-      strftime(date, sizeof(date), " %e %R", &file_timeinfo);
+      date << std::setw( 3 ) << file_timeinfo.tm_mday << " "
+           << std::setw( 2 ) << file_timeinfo.tm_hour << ":"
+           << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_min;
     }
     else
     {
-      // We must not return the time, only the date :(
-      strftime(date, sizeof(date), " %e  %Y", &file_timeinfo);
+      static constexpr auto tm_year_base_year = 1900;
+      date << std::setw( 3 ) << file_timeinfo.tm_mday
+           << " " << ( file_timeinfo.tm_year + tm_year_base_year );
     }
 
-    return month_names[file_timeinfo.tm_mon] + std::string(date);
+    return month_names[file_timeinfo.tm_mon] + date.str();
   }
 
   bool FileStatus::canOpenDir() const
