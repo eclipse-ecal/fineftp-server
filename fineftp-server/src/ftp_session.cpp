@@ -140,7 +140,7 @@ namespace fineftp
     size_t space_index = command.find_first_of(' ');
 
     ftp_command = command.substr(0, space_index);
-    std::transform(ftp_command.begin(), ftp_command.end(), ftp_command.begin(), [](unsigned char c) { return std::toupper(c); });
+    std::transform(ftp_command.begin(), ftp_command.end(), ftp_command.begin(), [](char c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
 
     if (space_index != std::string::npos)
     {
