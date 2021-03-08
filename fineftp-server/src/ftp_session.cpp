@@ -826,23 +826,14 @@ namespace fineftp
 
   FtpMessage FtpSession::handleFtpCommandSYST(const std::string& /*param*/)
   {
-#if defined _WIN32 || defined _WIN64
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "WIN32");
-#elif defined __ANDROID__
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "LINUX");
-#elif defined __linux__
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "LINUX");
-#elif defined __APPLE__ && __MACH__
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "MACOS");
-#elif defined __FreeBSD__
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "FREEBSD");
-#elif defined __NetBSD__
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "NETBSD");
-#elif defined __OpenBSD__
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "OPENBSD");
-#else
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "UNKNOWN");
-#endif
+    // Always returning "UNIX" when being asked for the operating system.
+    // Some clients (Mozilla Firefox for example) may disconnect, when we
+    // return an unknown operating system here. As depending on the Server's
+    // operating system is a horrible feature anyways, we simply fake it.
+    //
+    // Unix should be the best compatible value here, as we emulate Unix-like
+    // outputs for other commands (-> LIST) on all operating systems.
+    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "UNIX");
   }
 
   FtpMessage FtpSession::handleFtpCommandSTAT(const std::string& /*param*/)
