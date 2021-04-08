@@ -138,7 +138,7 @@ namespace fineftp
                        , std::shared_ptr<IoFile>            file
                        , std::function<void(void)>          fetch_more = []() {return; });
 
-    void endDataReceiving();
+    void endDataReceiving(std::shared_ptr<IoFile> file);
 
   ////////////////////////////////////////////////////////
   // Helpers
