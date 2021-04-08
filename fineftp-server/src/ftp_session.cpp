@@ -1066,7 +1066,7 @@ namespace fineftp
                           {
                             me->writeDataToFile(buffer, file);
                           }
-                          me->endDataReceiving();
+                          me->endDataReceiving(file);
                           return;
                         }
                         else if (length > 0)
@@ -1086,10 +1086,12 @@ namespace fineftp
                         });
   }
 
-  void FtpSession::endDataReceiving()
+  void FtpSession::endDataReceiving(std::shared_ptr<IoFile> file)
   {
-    file_rw_strand_.post([me = shared_from_this()]
+    file_rw_strand_.post([me = shared_from_this(), file]
                         {
+                          file->file_stream_.flush();
+                          file->file_stream_.close();
                           me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                         });
   }
