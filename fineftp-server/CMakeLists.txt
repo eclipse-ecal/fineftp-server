@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.5.1)
 
 project(server)
-set(PROJECT_VERSION_STRING 1.0.10)
+set(PROJECT_VERSION_STRING 1.0.11)
 set(PROJECT_VERSION_MAJOR 1)
 set(PROJECT_VERSION_MINOR 0)
-set(PROJECT_VERSION_PATCH 10)
+set(PROJECT_VERSION_PATCH 11)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -50,10 +50,13 @@ target_link_libraries(${PROJECT_NAME}
 # Link asio as described in this workaround: https://gitlab.kitware.com/cmake/cmake/-/issues/15415#note_633938
 target_link_libraries     (${PROJECT_NAME} PRIVATE $<BUILD_INTERFACE:asio::asio>)
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE)
-target_compile_definitions(${PROJECT_NAME} PRIVATE __USE_FILE_OFFSET64=1)
-target_compile_definitions(${PROJECT_NAME} PRIVATE _WIN32_WINNT=0x0601)
-
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE
+        ASIO_STANDALONE
+        ASIO_DISABLE_VISIBILITY
+        __USE_FILE_OFFSET64=1
+        _WIN32_WINNT=0x0601
+)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
                            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
