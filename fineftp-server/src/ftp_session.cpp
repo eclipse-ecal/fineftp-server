@@ -148,7 +148,7 @@ namespace fineftp
     }
 
 
-    const std::map<std::string, std::function<FtpMessage(std::string)>> command_map {
+    const std::map<std::string, std::function<void(std::string)>> command_map {
       // Access control commands
       { "USER", std::bind(&FtpSession::handleFtpCommandUSER, this, std::placeholders::_1) },
       { "PASS", std::bind(&FtpSession::handleFtpCommandPASS, this, std::placeholders::_1) },
@@ -191,8 +191,7 @@ namespace fineftp
     auto command_it = command_map.find(ftp_command);
     if (command_it != command_map.end())
     {
-      FtpMessage reply = command_it->second(parameters);
-      sendFtpMessage(reply);
+      command_it->second(parameters);
       last_command_ = ftp_command;
     }
     else
@@ -219,7 +218,7 @@ namespace fineftp
 
   // Access control commands
 
-  FtpMessage FtpSession::handleFtpCommandUSER(const std::string& param)
+  void FtpSession::handleFtpCommandUSER(const std::string& param)
   {
     logged_in_user_        = nullptr;
     username_for_login_    = param;
@@ -227,19 +226,22 @@ namespace fineftp
 
     if (param.empty())
     {
-      return FtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "Please provide username");
+      sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "Please provide username");
+      return;
     }
     else
     {
-      return FtpMessage(FtpReplyCode::USER_NAME_OK, "Please enter password");
+      sendFtpMessage(FtpReplyCode::USER_NAME_OK, "Please enter password");
+      return;
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandPASS(const std::string& param)
+  void FtpSession::handleFtpCommandPASS(const std::string& param)
   {
     if (last_command_ != "USER")
     {
-      return FtpMessage(FtpReplyCode::COMMANDS_BAD_SEQUENCE, "Please specify username first");
+      sendFtpMessage(FtpReplyCode::COMMANDS_BAD_SEQUENCE, "Please specify username first");
+      return;
     }
     else
     {
@@ -247,107 +249,93 @@ namespace fineftp
       if (user)
       {
         logged_in_user_ = user;
-        return FtpMessage(FtpReplyCode::USER_LOGGED_IN, "Login successful");
+        sendFtpMessage(FtpReplyCode::USER_LOGGED_IN, "Login successful");
+        return;
       }
       else
       {
-        return FtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Failed to log in");
+        sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Failed to log in");
+        return;
       }
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandACCT(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandACCT(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
+    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandCWD(const std::string& param)
+  void FtpSession::handleFtpCommandCWD(const std::string& param)
   {
-    if (!logged_in_user_)                                                           return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
-
-
-    if (param.empty())
-    {
-      return FtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "No path given");
-    }
-
-    std::string absolute_new_working_dir;
-
-    if (param[0] == '/')
-    {
-      // Absolute path given
-      absolute_new_working_dir = fineftp::Filesystem::cleanPath(param, false, '/');
-    }
-    else
-    {
-      // Make the path abolute
-      absolute_new_working_dir = fineftp::Filesystem::cleanPath(ftp_working_directory_ + "/" + param, false, '/');
-    }
-
-    auto local_path = toLocalPath(absolute_new_working_dir);
-    Filesystem::FileStatus file_status(local_path);
-
-    if (!file_status.isOk())
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Failed ot change directory: The given resource does not exist or permission denied.");
-
-    if (file_status.type() != Filesystem::FileType::Dir)
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Failed ot change directory: The given resource is not a directory.");
-
-    if (!file_status.canOpenDir())
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Failed ot change directory: Permission denied.");
-
-    ftp_working_directory_ = absolute_new_working_dir;
-    return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Working directory changed to " + ftp_working_directory_);
-
+      sendFtpMessage(executeCWD(param));
+      return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandCDUP(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandCDUP(const std::string& /*param*/)
   {
-    if (!logged_in_user_)                                                           return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0) 
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
 
     if (ftp_working_directory_ != "/")
     {
       // Only CDUP when we are not already at the root directory
-      auto cwd_reply = handleFtpCommandCWD("..");
+      auto cwd_reply = executeCWD("..");
       if (cwd_reply.replyCode() == FtpReplyCode::FILE_ACTION_COMPLETED)
       {
         // The CWD returns FILE_ACTION_COMPLETED on success, while CDUP returns COMMAND_OK on success.
-        return FtpMessage(FtpReplyCode::COMMAND_OK, cwd_reply.message());
+        sendFtpMessage(FtpReplyCode::COMMAND_OK, cwd_reply.message());
+        return;
       }
       else
       {
-        return cwd_reply;
+        sendFtpMessage(cwd_reply);
+        return;
       }
     }
     else
     {
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Already at root directory");
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Already at root directory");
+      return;
     }
   }
   
-  FtpMessage FtpSession::handleFtpCommandREIN(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandREIN(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Unsupported command");
+    sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Unsupported command");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandQUIT(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandQUIT(const std::string& /*param*/)
   {
     logged_in_user_ = nullptr;
-    return FtpMessage(FtpReplyCode::SERVICE_CLOSING_CONTROL_CONNECTION, "Connection shutting down");
+    sendFtpMessage(FtpReplyCode::SERVICE_CLOSING_CONTROL_CONNECTION, "Connection shutting down");
+    return;
   }
 
   // Transfer parameter commands
 
-  FtpMessage FtpSession::handleFtpCommandPORT(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandPORT(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "FTP active mode is not supported by this server");
+    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "FTP active mode is not supported by this server");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandPASV(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandPASV(const std::string& /*param*/)
   {
-    if (!logged_in_user_) return FtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
 
     if (data_acceptor_.is_open())
     {
@@ -367,7 +355,8 @@ namespace fineftp
       if (ec)
       {
         std::cerr << "Error opening data acceptor: " << ec.message() << std::endl;
-        return FtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
+        sendFtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
+        return;
       }
     }
     {
@@ -376,7 +365,8 @@ namespace fineftp
       if (ec)
       {
         std::cerr << "Error binding data acceptor: " << ec.message() << std::endl;
-        return FtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
+        sendFtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
+        return;
       }
     }
     {
@@ -385,7 +375,8 @@ namespace fineftp
       if (ec)
       {
         std::cerr << "Error listening on data acceptor: " << ec.message() << std::endl;
-        return FtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
+        sendFtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
+        return;
       }
     }
 
@@ -402,12 +393,17 @@ namespace fineftp
     }
     stream << ((port >> 8) & 0xff) << "," << (port & 0xff) << ")";
 
-    return FtpMessage(FtpReplyCode::ENTERING_PASSIVE_MODE, "Entering passive mode " + stream.str());
+    sendFtpMessage(FtpReplyCode::ENTERING_PASSIVE_MODE, "Entering passive mode " + stream.str());
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandTYPE(const std::string& param)
+  void FtpSession::handleFtpCommandTYPE(const std::string& param)
   {
-    if (!logged_in_user_) return FtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
 
     if (param == "A")
     {
@@ -415,35 +411,52 @@ namespace fineftp
       // TODO: The ASCII mode currently does not work as RFC 959 demands it. It
       // should perform line ending conversion, which it doesn't. But as we are
       // living in the 21st centry, nobody should use ASCII mode anyways.
-      return FtpMessage(FtpReplyCode::COMMAND_OK, "Switching to ASCII mode");
+      sendFtpMessage(FtpReplyCode::COMMAND_OK, "Switching to ASCII mode");
+      return;
     }
     else if (param == "I")
     {
       data_type_binary_ = true;
-      return FtpMessage(FtpReplyCode::COMMAND_OK, "Switching to binary mode");
+      sendFtpMessage(FtpReplyCode::COMMAND_OK, "Switching to binary mode");
+      return;
     }
     else
     {
-      return FtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER, "Unknown or unsupported type");
+      sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER, "Unknown or unsupported type");
+      return;
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandSTRU(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandSTRU(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
+    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandMODE(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandMODE(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
+    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
+    return;
   }
 
   // Ftp service commands
-  FtpMessage FtpSession::handleFtpCommandRETR(const std::string& param)
+  void FtpSession::handleFtpCommandRETR(const std::string& param)
   {
-    if (!logged_in_user_)                                                            return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,                 "Not logged in");
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileRead) == 0) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN,              "Permission denied");
-    if (!data_acceptor_.is_open())                                                   return FtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileRead) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN,              "Permission denied");
+      return;
+    }
+    if (!data_acceptor_.is_open())
+    {
+      sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+      return;
+    }
 
     std::string local_path = toLocalPath(param);
     
@@ -452,23 +465,37 @@ namespace fineftp
 
     if (!file->file_stream_.good())
     {
-      return FtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+      return;
     }
 
+    sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending file");
     sendFile(file);
-    return FtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending file");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandSTOR(const std::string& param)
+  void FtpSession::handleFtpCommandSTOR(const std::string& param)
   {
-    if (!logged_in_user_)                                                             return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,                 "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
 
     // TODO: the ACTION_NOT_TAKEN reply is not RCF 959 conform. Apparently in
     // 1985 nobody anticipated that you might not want anybody uploading files
     // to your server. We use the return code anyways, as the popular FileZilla
     // Server also returns that code as "Permission denied"
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileWrite) == 0) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN,              "Permission denied");
-    if (!data_acceptor_.is_open())                                                    return FtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileWrite) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN,              "Permission denied");
+      return;
+    }
+    if (!data_acceptor_.is_open())
+    {
+      sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+      return;
+    }
 
     std::string local_path = toLocalPath(param);
 
@@ -478,11 +505,13 @@ namespace fineftp
       if ((existing_file_filestatus.type() == Filesystem::FileType::RegularFile)
         && (static_cast<int>(logged_in_user_->permissions_ & Permission::FileDelete) == 0))
       {
-        return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN_FILENAME_NOT_ALLOWED, "File already exists. Permission denied to overwrite file.");
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN_FILENAME_NOT_ALLOWED, "File already exists. Permission denied to overwrite file.");
+        return;
       }
       else if (existing_file_filestatus.type() == Filesystem::FileType::Dir)
       {
-        return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN_FILENAME_NOT_ALLOWED, "Cannot create file. A directory with that name already exists.");
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN_FILENAME_NOT_ALLOWED, "Cannot create file. A directory with that name already exists.");
+        return;
       }
     }
 
@@ -491,23 +520,38 @@ namespace fineftp
 
     if (!file->file_stream_.good())
     {
-      return FtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+      return;
     }
 
+    sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
     receiveFile(file);
-    return FtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandSTOU(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandSTOU(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
+    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandAPPE(const std::string& param)
+  void FtpSession::handleFtpCommandAPPE(const std::string& param)
   {
-    if (!logged_in_user_)                                                              return FtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileAppend) == 0) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
-    if (!data_acceptor_.is_open())                                                     return FtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileAppend) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
+    if (!data_acceptor_.is_open())
+    {
+      sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+      return;
+    }
 
     std::string local_path = toLocalPath(param);
 
@@ -515,7 +559,8 @@ namespace fineftp
     if (!existing_file_filestatus.isOk()
       || (existing_file_filestatus.type() != Filesystem::FileType::RegularFile))
     {
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "File does not exist.");
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "File does not exist.");
+      return;
     }
 
     std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::app | std::ios::binary) : (std::ios::out | std::ios::app));
@@ -523,24 +568,28 @@ namespace fineftp
 
     if (!file->file_stream_.good())
     {
-      return FtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+      return;
     }
 
+    sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
     receiveFile(file);
-    return FtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandALLO(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandALLO(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
+    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandREST(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandREST(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
+    sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandRNFR(const std::string& param)
+  void FtpSession::handleFtpCommandRNFR(const std::string& param)
   {
     rename_from_path_.clear();
 
@@ -549,26 +598,34 @@ namespace fineftp
     if (is_renamable_error.replyCode() == FtpReplyCode::COMMAND_OK)
     {
       rename_from_path_ = param;
-      return FtpMessage(FtpReplyCode::FILE_ACTION_NEEDS_FURTHER_INFO, "Enter target name");
+      sendFtpMessage(FtpReplyCode::FILE_ACTION_NEEDS_FURTHER_INFO, "Enter target name");
+      return;
     }
     else
     {
-      return is_renamable_error;
+      sendFtpMessage(is_renamable_error);
+      return;
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandRNTO(const std::string& param)
+  void FtpSession::handleFtpCommandRNTO(const std::string& param)
   {
-    if (!logged_in_user_) return FtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
 
     if (last_command_ != "RNFR" || rename_from_path_.empty())
     {
-      return FtpMessage(FtpReplyCode::COMMANDS_BAD_SEQUENCE, "Please specify target file first");
+      sendFtpMessage(FtpReplyCode::COMMANDS_BAD_SEQUENCE, "Please specify target file first");
+      return;
     }
 
     if (param.empty())
     {
-      return FtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "No target name given");
+      sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "No target name given");
+      return;
     }
 
     // TODO: returning neiher FILE_ACTION_NOT_TAKEN nor ACTION_NOT_TAKEN are
@@ -588,125 +645,163 @@ namespace fineftp
       // and Linux differs; Windows will not overwrite files, Linux will).      
       if (Filesystem::FileStatus(local_to_path).isOk())
       {
-        return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Target path exists already.");
+        sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Target path exists already.");
+        return;
       }
 
 #ifdef WIN32
       if (MoveFileA(local_from_path.c_str(), local_to_path.c_str()) != 0)
       {
-        return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
+        sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
+        return;
       }
       else
       {
-        return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file: " + GetLastErrorStr());
+        sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file: " + GetLastErrorStr());
+        return;
       }
 #else // WIN32
       if (rename(local_from_path.c_str(), local_to_path.c_str()) == 0)
       {
-        return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
+        sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
+        return;
       }
       else
       {
-        return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file");
+        sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file");
+        return;
       }
 #endif // WIN32
     }
     else
     {
-      return is_renamable_error;
+      sendFtpMessage(is_renamable_error);
+      return;
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandABOR(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandABOR(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
+    sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandDELE(const std::string& param)
+  void FtpSession::handleFtpCommandDELE(const std::string& param)
   {
-    if (!logged_in_user_) return FtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
     std::string local_path = toLocalPath(param);
 
     auto file_status = Filesystem::FileStatus(local_path);
 
     if (!file_status.isOk())
     {
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Resource does not exist");
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Resource does not exist");
+      return;
     }
     else if (file_status.type() != Filesystem::FileType::RegularFile)
     {
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Resource is not a file");
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Resource is not a file");
+      return;
     }
     else
     {
       if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileDelete) == 0)
       {
-        return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+        return;
       }
       else
       {
 #ifdef WIN32
         if (DeleteFileA(local_path.c_str()) != 0)
         {
-          return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
+          sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
+          return;
         }
         else
         {
-          return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Unable to delete file: " + GetLastErrorStr());
+          sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Unable to delete file: " + GetLastErrorStr());
+          return;
         }
 #else
         if (unlink(local_path.c_str()) == 0)
         {
-          return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
+          sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
+          return;
         }
         else
         {
-          return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Unable to delete file");
+          sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Unable to delete file");
+          return;
         }
 #endif
       }
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandRMD(const std::string& param)
+  void FtpSession::handleFtpCommandRMD(const std::string& param)
   {
-    if (!logged_in_user_)                                                             return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirDelete) == 0) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirDelete) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
 
     std::string local_path = toLocalPath(param);
 
 #ifdef WIN32
     if (RemoveDirectoryA(local_path.c_str()) != 0)
     {
-      return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
+      sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
+      return;
     }
     else
     {
       // If would be a good idea to return a 4xx error code here (-> temp error)
       // (e.g. FILE_ACTION_NOT_TAKEN), but RFC 959 assumes that all directory
       // errors are permanent.
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to remove directory: " + GetLastErrorStr());
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to remove directory: " + GetLastErrorStr());
+      return;
     }
 #else
     if (rmdir(local_path.c_str()) == 0)
     {
-      return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
+      sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
+      return;
     }
     else
     {
       // If would be a good idea to return a 4xx error code here (-> temp error)
       // (e.g. FILE_ACTION_NOT_TAKEN), but RFC 959 assumes that all directory
       // errors are permanent.
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to remove directory");
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to remove directory");
+      return;
     }
 #endif
 
   }
 
-  FtpMessage FtpSession::handleFtpCommandMKD(const std::string& param)
+  void FtpSession::handleFtpCommandMKD(const std::string& param)
   {
-    if (!logged_in_user_)                                                             return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirCreate) == 0) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirCreate) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
 
     auto local_path = toLocalPath(param);
 
@@ -714,45 +809,62 @@ namespace fineftp
     LPSECURITY_ATTRIBUTES security_attributes = NULL; // => Default security attributes
     if (CreateDirectoryA(local_path.c_str(), security_attributes) != 0)
     {
-      return FtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
+      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsolutePath(param)) + " Successfully created");
+      return;
     }
     else
     {
       // If would be a good idea to return a 4xx error code here (-> temp error)
       // (e.g. FILE_ACTION_NOT_TAKEN), but RFC 959 assumes that all directory
       // errors are permanent.
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to create directory: " + GetLastErrorStr());
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to create directory: " + GetLastErrorStr());
+      return;
     }
 #else
     mode_t mode = 0755;
     if (mkdir(local_path.c_str(), mode) == 0)
     {
-      return FtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
+      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
+      return;
     }
     else
     {
       // If would be a good idea to return a 4xx error code here (-> temp error)
       // (e.g. FILE_ACTION_NOT_TAKEN), but RFC 959 assumes that all directory
       // errors are permanent.
-      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to create directory");
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Unable to create directory");
+      return;
     }
 #endif
   }
 
-  FtpMessage FtpSession::handleFtpCommandPWD(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandPWD(const std::string& /*param*/)
   {
     // RFC 959 does not allow returning NOT_LOGGED_IN here, so we abuse ACTION_NOT_TAKEN for that.
-    if (!logged_in_user_) return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Not logged in");
+      return;
+    }
 
-    return FtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(ftp_working_directory_));
+    sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(ftp_working_directory_));
+    return;
   }
 
-  FtpMessage FtpSession::handleFtpCommandLIST(const std::string& param)
+  void FtpSession::handleFtpCommandLIST(const std::string& param)
   {
-    if (!logged_in_user_)                                                           return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
 
     // RFC 959 does not allow ACTION_NOT_TAKEN (-> permanent error), so we return a temporary error (FILE_ACTION_NOT_TAKEN).
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0) return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
 
     std::string local_path = toLocalPath(param);
     auto dir_status = Filesystem::FileStatus(local_path);
@@ -763,32 +875,44 @@ namespace fineftp
       {
         if (dir_status.canOpenDir())
         {
+          sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending directory listing");
           sendDirectoryListing(Filesystem::dirContent(local_path));
-          return FtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending directory listing");
+          return;
         }
         else
         {
-          return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+          sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+          return;
         }
       }
       else
       {
         // TODO: RFC959: If the pathname specifies a file then the server should send current information on the file.
-        return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path is not a directory");
+        sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path is not a directory");
+        return;
       }
     }
     else
     {
-      return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path does not exist");
+      sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path does not exist");
+      return;
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandNLST(const std::string& param)
+  void FtpSession::handleFtpCommandNLST(const std::string& param)
   {
-    if (!logged_in_user_)                                                           return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+      return;
+    }
 
     // RFC 959 does not allow ACTION_NOT_TAKEN (-> permanent error), so we return a temporary error (FILE_ACTION_NOT_TAKEN).
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0) return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
 
     std::string local_path = toLocalPath(param);
     auto dir_status = Filesystem::FileStatus(local_path);
@@ -799,32 +923,36 @@ namespace fineftp
       {
         if (dir_status.canOpenDir())
         {
+          sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending name list");
           sendNameList(Filesystem::dirContent(local_path));
-          return FtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending name list");
+          return;
         }
         else
         {
-          return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+          sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
+          return;
         }
       }
       else
       {
         // TODO: RFC959: If the pathname specifies a file then the server should send current information on the file.
-        return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path is not a directory");
+        sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path is not a directory");
+        return;
       }
     }
     else
     {
-      return FtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path does not exist");
+      sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Path does not exist");
+      return;
     }
   }
 
-  FtpMessage FtpSession::handleFtpCommandSITE(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandSITE(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
+    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
   }
 
-  FtpMessage FtpSession::handleFtpCommandSYST(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandSYST(const std::string& /*param*/)
   {
     // Always returning "UNIX" when being asked for the operating system.
     // Some clients (Mozilla Firefox for example) may disconnect, when we
@@ -833,22 +961,22 @@ namespace fineftp
     //
     // Unix should be the best compatible value here, as we emulate Unix-like
     // outputs for other commands (-> LIST) on all operating systems.
-    return FtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "UNIX");
+    sendFtpMessage(FtpReplyCode::NAME_SYSTEM_TYPE, "UNIX");
   }
 
-  FtpMessage FtpSession::handleFtpCommandSTAT(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandSTAT(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
+    sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
   }
 
-  FtpMessage FtpSession::handleFtpCommandHELP(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandHELP(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
+    sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
   }
 
-  FtpMessage FtpSession::handleFtpCommandNOOP(const std::string& /*param*/)
+  void FtpSession::handleFtpCommandNOOP(const std::string& /*param*/)
   {
-    return FtpMessage(FtpReplyCode::COMMAND_OK, "OK");
+    sendFtpMessage(FtpReplyCode::COMMAND_OK, "OK");
   }
 
 
@@ -1100,7 +1228,7 @@ namespace fineftp
   // Helpers
   ////////////////////////////////////////////////////////
 
-  std::string FtpSession::toAbsoluateFtpPath(const std::string& rel_or_abs_ftp_path) const
+  std::string FtpSession::toAbsolutePath(const std::string& rel_or_abs_ftp_path) const
   {
     std::string absolute_ftp_path;
 
@@ -1121,7 +1249,7 @@ namespace fineftp
     assert(logged_in_user_);
 
     // First make the ftp path absolute if it isn't already
-    std::string absolute_ftp_path = toAbsoluateFtpPath(ftp_path);
+    std::string absolute_ftp_path = toAbsolutePath(ftp_path);
 
     // Now map it to the local filesystem
     return fineftp::Filesystem::cleanPathNative(logged_in_user_->local_root_path_ + "/" + absolute_ftp_path);
@@ -1184,6 +1312,55 @@ namespace fineftp
     {
       return FtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "Empty path");
     }
+  }
+
+  FtpMessage FtpSession::executeCWD(const std::string& param)
+  {
+    if (!logged_in_user_)
+    {
+      return FtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::DirList) == 0)
+    {
+      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+    }
+
+
+    if (param.empty())
+    {
+      return FtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "No path given");
+    }
+
+    std::string absolute_new_working_dir;
+
+    if (param[0] == '/')
+    {
+      // Absolute path given
+      absolute_new_working_dir = fineftp::Filesystem::cleanPath(param, false, '/');
+    }
+    else
+    {
+      // Make the path abolute
+      absolute_new_working_dir = fineftp::Filesystem::cleanPath(ftp_working_directory_ + "/" + param, false, '/');
+    }
+
+    auto local_path = toLocalPath(absolute_new_working_dir);
+    Filesystem::FileStatus file_status(local_path);
+
+    if (!file_status.isOk())
+    {
+      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Failed ot change directory: The given resource does not exist or permission denied.");
+    }
+    if (file_status.type() != Filesystem::FileType::Dir)
+    {
+      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Failed ot change directory: The given resource is not a directory.");
+    }
+    if (!file_status.canOpenDir())
+    {
+      return FtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Failed ot change directory: Permission denied.");
+    }
+    ftp_working_directory_ = absolute_new_working_dir;
+    return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Working directory changed to " + ftp_working_directory_);
   }
 
 #ifdef WIN32
