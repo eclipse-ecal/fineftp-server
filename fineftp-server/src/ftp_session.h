@@ -144,7 +144,7 @@ namespace fineftp
   // Helpers
   ////////////////////////////////////////////////////////
   private:
-    std::string toAbsolutePath(const std::string& rel_or_abs_ftp_path) const;
+    std::string toAbsoluteFtpPath(const std::string& rel_or_abs_ftp_path) const;
     std::string toLocalPath(const std::string& ftp_path) const;
     std::string createQuotedFtpPath(const std::string& unquoted_ftp_path) const;
 

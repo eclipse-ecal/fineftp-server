@@ -809,7 +809,7 @@ namespace fineftp
     LPSECURITY_ATTRIBUTES security_attributes = NULL; // => Default security attributes
     if (CreateDirectoryA(local_path.c_str(), security_attributes) != 0)
     {
-      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsolutePath(param)) + " Successfully created");
+      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluteFtpPath(param)) + " Successfully created");
       return;
     }
     else
@@ -824,7 +824,7 @@ namespace fineftp
     mode_t mode = 0755;
     if (mkdir(local_path.c_str(), mode) == 0)
     {
-      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
+      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluteFtpPath(param)) + " Successfully created");
       return;
     }
     else
@@ -1228,7 +1228,7 @@ namespace fineftp
   // Helpers
   ////////////////////////////////////////////////////////
 
-  std::string FtpSession::toAbsolutePath(const std::string& rel_or_abs_ftp_path) const
+  std::string FtpSession::toAbsoluteFtpPath(const std::string& rel_or_abs_ftp_path) const
   {
     std::string absolute_ftp_path;
 
@@ -1249,7 +1249,7 @@ namespace fineftp
     assert(logged_in_user_);
 
     // First make the ftp path absolute if it isn't already
-    std::string absolute_ftp_path = toAbsolutePath(ftp_path);
+    std::string absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
 
     // Now map it to the local filesystem
     return fineftp::Filesystem::cleanPathNative(logged_in_user_->local_root_path_ + "/" + absolute_ftp_path);
