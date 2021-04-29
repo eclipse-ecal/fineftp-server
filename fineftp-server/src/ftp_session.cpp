@@ -56,15 +56,15 @@ namespace fineftp
 
   void FtpSession::sendFtpMessage(const FtpMessage& message)
   {
-    io_service_.post(command_write_strand_.wrap([me = shared_from_this(), message]()
-                                    {
-                                      bool write_in_progress = !me->command_output_queue_.empty();
-                                      me->command_output_queue_.push_back(message.str());
-                                      if (!write_in_progress)
-                                      {
-                                        me->startSendingMessages();
-                                      }
-                                    }));
+    command_write_strand_.post([me = shared_from_this(), message]()
+                                {
+                                  bool write_in_progress = !me->command_output_queue_.empty();
+                                  me->command_output_queue_.push_back(message.str());
+                                  if (!write_in_progress)
+                                  {
+                                    me->startSendingMessages();
+                                  }
+                                });
   }
   void FtpSession::sendFtpMessage(FtpReplyCode code, const std::string& message)
   {
@@ -824,7 +824,7 @@ namespace fineftp
     mode_t mode = 0755;
     if (mkdir(local_path.c_str(), mode) == 0)
     {
-      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluteFtpPath(param)) + " Successfully created");
+      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
       return;
     }
     else
