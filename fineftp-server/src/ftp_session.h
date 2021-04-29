@@ -68,42 +68,42 @@ namespace fineftp
   ////////////////////////////////////////////////////////
   private:
     // Access control commands
-    FtpMessage handleFtpCommandUSER(const std::string& param);
-    FtpMessage handleFtpCommandPASS(const std::string& param);
-    FtpMessage handleFtpCommandACCT(const std::string& param);
-    FtpMessage handleFtpCommandCWD(const std::string& param);
-    FtpMessage handleFtpCommandCDUP(const std::string& param);
-    FtpMessage handleFtpCommandREIN(const std::string& param);
-    FtpMessage handleFtpCommandQUIT(const std::string& param);
+    void handleFtpCommandUSER(const std::string& param);
+    void handleFtpCommandPASS(const std::string& param);
+    void handleFtpCommandACCT(const std::string& param);
+    void handleFtpCommandCWD(const std::string& param);
+    void handleFtpCommandCDUP(const std::string& param);
+    void handleFtpCommandREIN(const std::string& param);
+    void handleFtpCommandQUIT(const std::string& param);
 
     // Transfer parameter commands
-    FtpMessage handleFtpCommandPORT(const std::string& param);
-    FtpMessage handleFtpCommandPASV(const std::string& param);
-    FtpMessage handleFtpCommandTYPE(const std::string& param);
-    FtpMessage handleFtpCommandSTRU(const std::string& param);
-    FtpMessage handleFtpCommandMODE(const std::string& param);
+    void handleFtpCommandPORT(const std::string& param);
+    void handleFtpCommandPASV(const std::string& param);
+    void handleFtpCommandTYPE(const std::string& param);
+    void handleFtpCommandSTRU(const std::string& param);
+    void handleFtpCommandMODE(const std::string& param);
 
     // Ftp service commands
-    FtpMessage handleFtpCommandRETR(const std::string& param);
-    FtpMessage handleFtpCommandSTOR(const std::string& param);
-    FtpMessage handleFtpCommandSTOU(const std::string& param);
-    FtpMessage handleFtpCommandAPPE(const std::string& param);
-    FtpMessage handleFtpCommandALLO(const std::string& param);
-    FtpMessage handleFtpCommandREST(const std::string& param);
-    FtpMessage handleFtpCommandRNFR(const std::string& param);
-    FtpMessage handleFtpCommandRNTO(const std::string& param);
-    FtpMessage handleFtpCommandABOR(const std::string& param);
-    FtpMessage handleFtpCommandDELE(const std::string& param);
-    FtpMessage handleFtpCommandRMD(const std::string& param);
-    FtpMessage handleFtpCommandMKD(const std::string& param);
-    FtpMessage handleFtpCommandPWD(const std::string& param);
-    FtpMessage handleFtpCommandLIST(const std::string& param);
-    FtpMessage handleFtpCommandNLST(const std::string& param);
-    FtpMessage handleFtpCommandSITE(const std::string& param);
-    FtpMessage handleFtpCommandSYST(const std::string& param);
-    FtpMessage handleFtpCommandSTAT(const std::string& param);
-    FtpMessage handleFtpCommandHELP(const std::string& param);
-    FtpMessage handleFtpCommandNOOP(const std::string& param);
+    void handleFtpCommandRETR(const std::string& param);
+    void handleFtpCommandSTOR(const std::string& param);
+    void handleFtpCommandSTOU(const std::string& param);
+    void handleFtpCommandAPPE(const std::string& param);
+    void handleFtpCommandALLO(const std::string& param);
+    void handleFtpCommandREST(const std::string& param);
+    void handleFtpCommandRNFR(const std::string& param);
+    void handleFtpCommandRNTO(const std::string& param);
+    void handleFtpCommandABOR(const std::string& param);
+    void handleFtpCommandDELE(const std::string& param);
+    void handleFtpCommandRMD(const std::string& param);
+    void handleFtpCommandMKD(const std::string& param);
+    void handleFtpCommandPWD(const std::string& param);
+    void handleFtpCommandLIST(const std::string& param);
+    void handleFtpCommandNLST(const std::string& param);
+    void handleFtpCommandSITE(const std::string& param);
+    void handleFtpCommandSYST(const std::string& param);
+    void handleFtpCommandSTAT(const std::string& param);
+    void handleFtpCommandHELP(const std::string& param);
+    void handleFtpCommandNOOP(const std::string& param);
 
   ////////////////////////////////////////////////////////
   // FTP data-socket send
@@ -144,7 +144,7 @@ namespace fineftp
   // Helpers
   ////////////////////////////////////////////////////////
   private:
-    std::string toAbsoluateFtpPath(const std::string& rel_or_abs_ftp_path) const;
+    std::string toAbsoluteFtpPath(const std::string& rel_or_abs_ftp_path) const;
     std::string toLocalPath(const std::string& ftp_path) const;
     std::string createQuotedFtpPath(const std::string& unquoted_ftp_path) const;
 
@@ -159,6 +159,8 @@ namespace fineftp
     * @return (COMMAND_OK, "") if the path can be renamed or any other meaningfull error message if not.
     */
     FtpMessage checkIfPathIsRenamable(const std::string& ftp_path) const;
+
+    FtpMessage executeCWD(const std::string& param);
 
 #ifdef WIN32
     /**
