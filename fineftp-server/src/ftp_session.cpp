@@ -824,7 +824,7 @@ namespace fineftp
     mode_t mode = 0755;
     if (mkdir(local_path.c_str(), mode) == 0)
     {
-      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluateFtpPath(param)) + " Successfully created");
+      sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluteFtpPath(param)) + " Successfully created");
       return;
     }
     else
