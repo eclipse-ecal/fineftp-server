@@ -866,8 +866,17 @@ namespace fineftp
       return;
     }
 
-    std::string local_path = toLocalPath(param);
-    auto dir_status = Filesystem::FileStatus(local_path);
+	std::string path2dst = param;
+	if (path2dst.substr(0, 3)=="-a "|| path2dst.substr(0, 3)=="-l ")
+	{
+		path2dst = path2dst.substr(3);
+	}
+	else if (path2dst.substr(0, 4) == "-al " || path2dst.substr(0, 4) == "-la ")
+	{
+		path2dst = path2dst.substr(4);
+	}
+	std::string local_path = toLocalPath(path2dst);
+	auto dir_status = Filesystem::FileStatus(local_path);
 
     if (dir_status.isOk())
     {
