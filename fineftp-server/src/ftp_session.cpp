@@ -865,18 +865,32 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Permission denied");
       return;
     }
-
-	std::string path2dst = param;
-	if (path2dst.substr(0, 3)=="-a "|| path2dst.substr(0, 3)=="-l ")
-	{
-		path2dst = path2dst.substr(3);
-	}
-	else if (path2dst.substr(0, 4) == "-al " || path2dst.substr(0, 4) == "-la ")
-	{
-		path2dst = path2dst.substr(4);
-	}
-	std::string local_path = toLocalPath(path2dst);
-	auto dir_status = Filesystem::FileStatus(local_path);
+    //deal some unusual commands like "LIST -a","LIST -a dirname" 
+    std::string path2dst = param;
+    if(param.substr(0, 2)=="-a" || param.substr(0, 2)=="-l")
+    {
+      if(param.substr(2, 1)==" ")
+      {
+        path2dst = param.substr(3);
+      }
+      else
+      {
+        path2dst = ".";
+      }
+    }
+    else if(param.substr(0, 3)=="-al" || param.substr(0, 3)=="-la")
+    {
+      if(param.substr(3, 1)==" ")
+      {
+        path2dst = param.substr(4);
+      }
+      else
+      {
+        path2dst = ".";
+      }
+    }
+    std::string local_path = toLocalPath(path2dst);
+    auto dir_status = Filesystem::FileStatus(local_path);
 
     if (dir_status.isOk())
     {
