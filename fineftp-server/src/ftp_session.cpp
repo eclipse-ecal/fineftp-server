@@ -869,7 +869,7 @@ namespace fineftp
     std::string path2dst = param;
     if(param.substr(0, 2)=="-a" || param.substr(0, 2)=="-l")
     {
-      if(param.substr(2, 1)==" ")
+      if(param.substr(0, 3)=="-a " || param.substr(0, 3)=="-l ")
       {
         path2dst = param.substr(3);
       }
@@ -880,7 +880,7 @@ namespace fineftp
     }
     else if(param.substr(0, 3)=="-al" || param.substr(0, 3)=="-la")
     {
-      if(param.substr(3, 1)==" ")
+      if(param.substr(0, 4)=="-al " || param.substr(0, 4)=="-la ")
       {
         path2dst = param.substr(4);
       }
