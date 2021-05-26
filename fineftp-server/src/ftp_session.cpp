@@ -866,7 +866,46 @@ namespace fineftp
       return;
     }
 
-    std::string local_path = toLocalPath(param);
+    // Deal with some unusual commands like "LIST -a", "LIST -a dirname".
+    // Some FTP clients send those commands, as if they would call ls on unix.
+    // 
+    // We try to support those parameters (or rather ignore them), even though
+    // this techniqually breaks listing directories that actually use "-a" etc.
+    // as directory name. As most clients however first CWD into a directory and
+    // call LIST without parameter afterwards and -a / -l / -al / -la are not
+    // common directory names, 
+    // 
+    // The RFC-violating LIST command now shall be:
+    // 
+    //   LIST [<SP> <arg>] [<SP> <pathname>] <CRLF>
+    // 
+    //   with:
+    // 
+    //     <arg> ::= -a
+    //             | -l
+    //             | -al
+    //             | -la
+    //
+
+    std::string path2dst;
+    if ((param == "-a") || (param == "-l") || (param == "-al") || (param == "-la"))
+    {
+      path2dst  = "";
+    }
+    else if ((param.substr(0, 3)=="-a "|| param.substr(0, 3)=="-l ") && (param.size() > 3))
+    {
+      path2dst = param.substr(3);
+    }
+    else if ((param.substr(0, 4) == "-al " || param.substr(0, 4) == "-la ") && (param.size() > 4))
+    {
+      path2dst = param.substr(4);
+    }
+    else
+    {
+      path2dst = param;
+    }
+
+    std::string local_path = toLocalPath(path2dst);
     auto dir_status = Filesystem::FileStatus(local_path);
 
     if (dir_status.isOk())
