@@ -5,6 +5,8 @@
 
 #include <fineftp/permissions.h>
 
+#include "fineftp_export.h"
+
 namespace fineftp
 {
 
@@ -46,7 +48,7 @@ namespace fineftp
      * @param port: The port to start the FTP server on. Defaults to 21.
      * @param host: The host to accept incoming connections from.
      */
-    FtpServer(const std::string& address, uint16_t port = 21);
+    FINEFTP_EXPORT FtpServer(const std::string& address, uint16_t port = 21);
 
     /**
      * @brief Creates an FTP Server instance that will listen on the the given control port.
@@ -65,9 +67,9 @@ namespace fineftp
      *
      * @param port: The port to start the FTP server on. Defaults to 21.
      */
-    FtpServer(uint16_t port = 21);
+    FINEFTP_EXPORT FtpServer(uint16_t port = 21);
 
-    ~FtpServer();
+    FINEFTP_EXPORT ~FtpServer();
 
     /**
      * @brief Adds a new user
@@ -90,7 +92,7 @@ namespace fineftp
      * 
      * @return True if adding the user was successful (i.e. it didn't exit already).
      */
-    bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions);
+    FINEFTP_EXPORT bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions);
     
     /**
      * @brief Adds the "anonymous" / "ftp" user that FTP clients use to access FTP servers without password
@@ -100,7 +102,7 @@ namespace fineftp
      * 
      * @return True if adding the anonymous user was successful (i.e. it didn't exit already).
      */
-    bool addUserAnonymous(const std::string& local_root_path, const Permission permissions);
+    FINEFTP_EXPORT bool addUserAnonymous(const std::string& local_root_path, const Permission permissions);
 
     /**
      * @brief Starts the FTP Server
@@ -109,7 +111,7 @@ namespace fineftp
      * 
      * @return True if the Server has been started successfully.
      */
-    bool start(size_t thread_count = 1);
+    FINEFTP_EXPORT bool start(size_t thread_count = 1);
 
     /**
      * @brief Stops the FTP Server
@@ -117,14 +119,14 @@ namespace fineftp
      * All operations will be cancelled as fast as possible. The clients will
      * not be informed about the shutdown.
      */
-    void stop();
+    FINEFTP_EXPORT void stop();
 
     /**
      * @brief Returns the number of currently open connections
      *
      * @return the number of open connections
      */
-    int getOpenConnectionCount() const;
+    FINEFTP_EXPORT int getOpenConnectionCount() const;
 
     /**
      * @brief Get the control port that the FTP server is listening on
@@ -136,18 +138,18 @@ namespace fineftp
      * 
      * @return The control port the server is listening on
      */
-    uint16_t getPort() const;
+    FINEFTP_EXPORT uint16_t getPort() const;
 
     /**
      * @brief Get the ip address that the FTP server is listening for.
      * 
      * @return The ip address the FTP server is listening for.
      */
-    std::string getAddress() const;
+    FINEFTP_EXPORT std::string getAddress() const;
 
     // Non-copyable
-    FtpServer(const FtpServer&) = delete;
-    FtpServer& operator=(const FtpServer&) = delete;
+    FINEFTP_EXPORT FtpServer(const FtpServer&) = delete;
+    FINEFTP_EXPORT FtpServer& operator=(const FtpServer&) = delete;
 
   private:
     std::unique_ptr<FtpServerImpl> ftp_server_;        /**< Implementation details */
