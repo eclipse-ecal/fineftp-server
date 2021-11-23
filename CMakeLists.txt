@@ -8,9 +8,7 @@ message(STATUS "Prefix Path: ${CMAKE_PREFIX_PATH}")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-project(fineftp VERSION 1.0.11)
-
-set(CMAKE_CXX_STANDARD 14)
+project(fineftp)
 
 set(as_subproject fineftp)
 include(msvc_sourcetree.cmake)
