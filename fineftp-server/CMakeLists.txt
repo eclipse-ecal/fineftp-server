@@ -1,12 +1,7 @@
 cmake_minimum_required(VERSION 3.5.1)
 
-project(server)
-set(PROJECT_VERSION_STRING 1.0.11)
-set(PROJECT_VERSION_MAJOR 1)
-set(PROJECT_VERSION_MINOR 0)
-set(PROJECT_VERSION_PATCH 11)
+project(server VERSION 1.1.0)
 
-set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
@@ -44,6 +39,10 @@ add_library (${PROJECT_NAME}
     ${sources}
 )
 
+# Generate version defines
+configure_file("fineftp_version.h.in" "${PROJECT_BINARY_DIR}/fineftp_version.h" @ONLY)
+
+# Generate header with export macros
 generate_export_header(${PROJECT_NAME}
   EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/fineftp_export.h
   BASE_NAME FINEFTP
@@ -88,18 +87,16 @@ target_include_directories(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    VERSION ${PROJECT_VERSION_STRING}
+    VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
     OUTPUT_NAME fineftp-${PROJECT_NAME}
 )
 
 ##################################
 
-if (MSVC)
-    # Mirror the folder structure with Visual Studio filters
-    include(../msvc_sourcetree.cmake)
-    msvc_source_tree(${includes} ${sources})
-endif()
+# Mirror the folder structure in an IDE
+include(sourcetree.cmake)
+create_source_tree(${includes} ${sources})
 
 ##################################
 
