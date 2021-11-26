@@ -11,3 +11,9 @@ ipch
 /_install
 /.vs
 /CMakeLists.txt.user
+
+# Common build directories in CMake projects
+build*
+
+# Temporary Vim files
+*.swp

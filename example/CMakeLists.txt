@@ -10,10 +10,10 @@ set(sources
     src/main.cpp
 )
 
-add_executable (${PROJECT_NAME}
+add_executable (example
     ${sources}
 )
 
-target_link_libraries (${PROJECT_NAME}
+target_link_libraries (example
     fineftp::server
 )
