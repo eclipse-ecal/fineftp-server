@@ -110,8 +110,13 @@ install(
 )
 
 install(DIRECTORY "include/fineftp" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
-install(FILES ${PROJECT_BINARY_DIR}/fineftp_export.h
-  DESTINATION include/fineftp)
+install(
+  FILES
+    ${PROJECT_BINARY_DIR}/fineftp_export.h
+    ${PROJECT_BINARY_DIR}/fineftp_version.h
+  DESTINATION
+    include/fineftp
+)
 
 install(
   EXPORT fineftpTargets 
