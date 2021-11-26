@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.5.1)
 
+set(CMAKE_CXX_STANDARD 14)
+
 # Normalize backslashes from Windows paths
 file(TO_CMAKE_PATH "${CMAKE_MODULE_PATH}" CMAKE_MODULE_PATH)
 file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
@@ -11,7 +13,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 project(fineftp)
 
 set(as_subproject fineftp)
-include(msvc_sourcetree.cmake)
 
 string(COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" _cmp)
 if (_cmp)

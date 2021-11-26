@@ -872,8 +872,9 @@ namespace fineftp
     // We try to support those parameters (or rather ignore them), even though
     // this techniqually breaks listing directories that actually use "-a" etc.
     // as directory name. As most clients however first CWD into a directory and
-    // call LIST without parameter afterwards and -a / -l / -al / -la are not
-    // common directory names, 
+    // call LIST without parameter afterwards and starting a directory name with
+    // "-a " / "-l " / "-al " / "-la " is not that common, the compatibility
+    // benefit should outperform te potential problems by a lot.
     // 
     // The RFC-violating LIST command now shall be:
     // 
