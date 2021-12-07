@@ -30,7 +30,8 @@ set(sources
     src/server_impl.cpp
     src/server_impl.h
     src/user_database.cpp
-    src/user_database.h
+    src/win_str_convert.cpp
+    src/win_str_convert.h
 )
 
 

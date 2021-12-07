@@ -12,7 +12,9 @@
 
 #ifdef WIN32
 #include <direct.h>
+#include "win_str_convert.h"
 #endif // WIN32
+
 
 namespace fineftp
 {
@@ -56,19 +58,24 @@ namespace fineftp
 
   void FtpSession::sendFtpMessage(const FtpMessage& message)
   {
-    command_write_strand_.post([me = shared_from_this(), message]()
+    sendRawFtpMessage(message.str());
+  }
+  void FtpSession::sendFtpMessage(FtpReplyCode code, const std::string& message)
+  {
+    sendFtpMessage(FtpMessage(code, message));
+  }
+
+  void FtpSession::sendRawFtpMessage(const std::string& raw_message)
+  {
+    command_write_strand_.post([me = shared_from_this(), raw_message]()
                                 {
                                   bool write_in_progress = !me->command_output_queue_.empty();
-                                  me->command_output_queue_.push_back(message.str());
+                                  me->command_output_queue_.push_back(raw_message);
                                   if (!write_in_progress)
                                   {
                                     me->startSendingMessages();
                                   }
                                 });
-  }
-  void FtpSession::sendFtpMessage(FtpReplyCode code, const std::string& message)
-  {
-    sendFtpMessage(FtpMessage(code, message));
   }
 
   void FtpSession::startSendingMessages()
@@ -186,6 +193,10 @@ namespace fineftp
       { "STAT", std::bind(&FtpSession::handleFtpCommandSTAT, this, std::placeholders::_1) },
       { "HELP", std::bind(&FtpSession::handleFtpCommandHELP, this, std::placeholders::_1) },
       { "NOOP", std::bind(&FtpSession::handleFtpCommandNOOP, this, std::placeholders::_1) },
+
+      // Modern FTP Commands
+      { "FEAT", std::bind(&FtpSession::handleFtpCommandFEAT, this, std::placeholders::_1) },
+      { "OPTS", std::bind(&FtpSession::handleFtpCommandOPTS, this, std::placeholders::_1) },
     };
 
     auto command_it = command_map.find(ftp_command);
@@ -650,7 +661,8 @@ namespace fineftp
       }
 
 #ifdef WIN32
-      if (MoveFileA(local_from_path.c_str(), local_to_path.c_str()) != 0)
+
+      if (MoveFileW(StrConvert::Utf8ToWide(local_from_path).c_str(), StrConvert::Utf8ToWide(local_to_path).c_str()) != 0)
       {
         sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
         return;
@@ -717,7 +729,7 @@ namespace fineftp
       else
       {
 #ifdef WIN32
-        if (DeleteFileA(local_path.c_str()) != 0)
+        if (DeleteFileW(StrConvert::Utf8ToWide(local_path).c_str()) != 0)
         {
           sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
           return;
@@ -759,7 +771,7 @@ namespace fineftp
     std::string local_path = toLocalPath(param);
 
 #ifdef WIN32
-    if (RemoveDirectoryA(local_path.c_str()) != 0)
+    if (RemoveDirectoryW(StrConvert::Utf8ToWide(local_path).c_str()) != 0)
     {
       sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
       return;
@@ -807,7 +819,7 @@ namespace fineftp
 
 #ifdef WIN32
     LPSECURITY_ATTRIBUTES security_attributes = NULL; // => Default security attributes
-    if (CreateDirectoryA(local_path.c_str(), security_attributes) != 0)
+    if (CreateDirectoryW(StrConvert::Utf8ToWide(local_path).c_str(), security_attributes) != 0)
     {
       sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluteFtpPath(param)) + " Successfully created");
       return;
@@ -1019,6 +1031,31 @@ namespace fineftp
     sendFtpMessage(FtpReplyCode::COMMAND_OK, "OK");
   }
 
+  // Modern FTP Commands
+  void FtpSession::handleFtpCommandFEAT(const std::string& /*param*/)
+  {
+    std::stringstream ss;
+    ss << "211- Feature List:\r\n";
+    ss << " UTF8\r\n";
+    ss << " LANG EN\r\n";
+    ss << "211 end\r\n";
+
+    sendRawFtpMessage(ss.str());
+  }
+
+  void FtpSession::handleFtpCommandOPTS(const std::string& param)
+  {
+    std::string param_upper = param;
+    std::transform(param_upper.begin(), param_upper.end(), param_upper.begin(), [](char c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
+
+    if (param_upper == "UTF8 ON")
+    {
+      sendFtpMessage(FtpReplyCode::COMMAND_OK, "OK");
+      return;
+    }
+
+    sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER, "Unrecognized parameter");
+  }
 
   ////////////////////////////////////////////////////////
   // FTP data-socket send
