@@ -3,7 +3,7 @@
 
 FineFTP is a minimal FTP server library for Windows and Unix flavors. The project is CMake based and only depends on asio, which is integrated as git submodule. No boost is required.
 
-You can easily embed this library into your own project in order to create an embedded FTP Server. It was developed and tested on Windows 10 (Visual Studio 2015 / 2019) and Ubuntu 16.04 - 20.10 (gcc 5.4.0 - 10.2.0).
+You can easily embed this library into your own project in order to create an embedded FTP Server. It was developed and tested on Windows 10 (Visual Studio 2015 / 2019) and Ubuntu 16.04 - 21.10 (gcc 5.4.0 - 11.2.0).
 
 ## Features
 
@@ -14,6 +14,7 @@ You can easily embed this library into your own project in order to create an em
 - User authentication (and anonymous user without authentication)
 - Individual local home path for each user
 - Access control on a per-user-basis
+- UTF8 support
 
 *fineFTP does not support any kind of encryption. You should only use fineFTP in trusted networks.*
 
