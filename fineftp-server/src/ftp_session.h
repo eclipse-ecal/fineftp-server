@@ -11,6 +11,8 @@
 #include "user_database.h"
 #include "ftp_user.h"
 
+#include "win_str_convert.h"
+
 namespace fineftp
 {
   class FtpSession
@@ -19,8 +21,12 @@ namespace fineftp
   private:
     struct IoFile
     {
-      IoFile(const char* filename, std::ios::openmode mode)
+      IoFile(const std::string& filename, std::ios::openmode mode)
+#ifdef WIN32
+        : file_stream_(StrConvert::Utf8ToWide(filename), mode)
+#else
         : file_stream_(filename, mode)
+#endif
         , stream_buffer_(1024 * 1024)
       {
         file_stream_.rdbuf()->pubsetbuf(stream_buffer_.data(), static_cast<std::streamsize>(stream_buffer_.size()));
@@ -31,10 +37,6 @@ namespace fineftp
         file_stream_.flush();
         file_stream_.close();
       }
-
-      IoFile(const std::string& filename, std::ios::openmode mode)
-        : IoFile(filename.c_str(), mode)
-      {}
 
       std::fstream      file_stream_;
       std::vector<char> stream_buffer_;
@@ -58,6 +60,7 @@ namespace fineftp
   private:
     void sendFtpMessage(const FtpMessage& message);
     void sendFtpMessage(FtpReplyCode code, const std::string& message);
+    void sendRawFtpMessage(const std::string& raw_message);
     void startSendingMessages();
     void readFtpCommand();
 
@@ -104,6 +107,11 @@ namespace fineftp
     void handleFtpCommandSTAT(const std::string& param);
     void handleFtpCommandHELP(const std::string& param);
     void handleFtpCommandNOOP(const std::string& param);
+
+    // Modern FTP Commands
+    void handleFtpCommandFEAT(const std::string& param);
+
+    void handleFtpCommandOPTS(const std::string& param);
 
   ////////////////////////////////////////////////////////
   // FTP data-socket send

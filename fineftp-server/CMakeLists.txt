@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5.1)
 
-project(server VERSION 1.1.0)
+project(server VERSION 1.2.0)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -30,7 +30,8 @@ set(sources
     src/server_impl.cpp
     src/server_impl.h
     src/user_database.cpp
-    src/user_database.h
+    src/win_str_convert.cpp
+    src/win_str_convert.h
 )
 
 

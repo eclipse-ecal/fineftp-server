@@ -10,6 +10,7 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <win_str_convert.h>
 
 #else // WIN32
 
@@ -30,7 +31,8 @@ namespace Filesystem
     : path_(path)
   {
 #ifdef WIN32
-    const int error_code = _stat64(path.c_str(), &file_status_);
+    std::wstring w_path_ = StrConvert::Utf8ToWide(path);
+    const int error_code = _wstat64(w_path_.c_str(), &file_status_);
 #else // WIN32
     const int error_code = stat(path.c_str(), &file_status_);
 #endif // WIN32
@@ -243,9 +245,11 @@ namespace Filesystem
     std::string find_file_path = path_ + "\\*";
     std::replace(find_file_path.begin(), find_file_path.end(), '/', '\\');
 
+    std::wstring w_find_file_path = StrConvert::Utf8ToWide(find_file_path);
+
     HANDLE hFind;
-    WIN32_FIND_DATAA ffd;
-    hFind = FindFirstFileA(find_file_path.c_str(), &ffd);
+    WIN32_FIND_DATAW ffd;
+    hFind = FindFirstFileW(w_find_file_path.c_str(), &ffd);
     if (hFind != INVALID_HANDLE_VALUE)
     {
       can_open_dir = true;
@@ -270,9 +274,11 @@ namespace Filesystem
     std::string find_file_path = path + "\\*";
     std::replace(find_file_path.begin(), find_file_path.end(), '/', '\\');
 
+    std::wstring w_find_file_path = StrConvert::Utf8ToWide(find_file_path);
+
     HANDLE hFind;
-    WIN32_FIND_DATAA ffd;
-    hFind = FindFirstFileA(find_file_path.c_str(), &ffd);
+    WIN32_FIND_DATAW ffd;
+    hFind = FindFirstFileW(w_find_file_path.c_str(), &ffd);
     if (hFind == INVALID_HANDLE_VALUE)
     {
       std::cerr << "FindFirstFile Error" << std::endl;
@@ -281,9 +287,9 @@ namespace Filesystem
 
     do
     {
-      std::string file_name(ffd.cFileName);
-      content.emplace(std::string(ffd.cFileName), FileStatus(path + "\\" + std::string(ffd.cFileName)));
-    } while (FindNextFileA(hFind, &ffd) != 0);
+      std::string file_name = StrConvert::WideToUtf8(std::wstring(ffd.cFileName));
+      content.emplace(file_name, FileStatus(path + "\\" + file_name));
+    } while (FindNextFileW(hFind, &ffd) != 0);
     FindClose(hFind);
 #else // WIN32
     DIR *dp;
