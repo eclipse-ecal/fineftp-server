@@ -22,7 +22,7 @@ namespace fineftp
     struct IoFile
     {
       IoFile(const std::string& filename, std::ios::openmode mode)
-#ifdef WIN32
+#if defined(WIN32) && !defined(__GNUG__)
         : file_stream_(StrConvert::Utf8ToWide(filename), mode)
 #else
         : file_stream_(filename, mode)
