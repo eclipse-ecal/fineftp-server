@@ -88,6 +88,7 @@ namespace fineftp
 
     // Ftp service commands
     void handleFtpCommandRETR(const std::string& param);
+    void handleFtpCommandSIZE(const std::string& param);
     void handleFtpCommandSTOR(const std::string& param);
     void handleFtpCommandSTOU(const std::string& param);
     void handleFtpCommandAPPE(const std::string& param);
