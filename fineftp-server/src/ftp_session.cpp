@@ -503,7 +503,11 @@ namespace fineftp
 
     std::ios::openmode open_mode =
        std::ios::ate | (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
+#if defined(WIN32) && !defined(__GNUG__)
+    std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
+#else
     std::ifstream file(local_path, open_mode);
+#endif
 
     if (!file.good())
     {
