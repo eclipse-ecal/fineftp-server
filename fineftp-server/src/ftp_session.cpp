@@ -174,6 +174,7 @@ namespace fineftp
 
       // Ftp service commands
       { "RETR", std::bind(&FtpSession::handleFtpCommandRETR, this, std::placeholders::_1) },
+      { "SIZE", std::bind(&FtpSession::handleFtpCommandSIZE, this, std::placeholders::_1) },
       { "STOR", std::bind(&FtpSession::handleFtpCommandSTOR, this, std::placeholders::_1) },
       { "STOU", std::bind(&FtpSession::handleFtpCommandSTOU, this, std::placeholders::_1) },
       { "APPE", std::bind(&FtpSession::handleFtpCommandAPPE, this, std::placeholders::_1) },
@@ -483,6 +484,52 @@ namespace fineftp
     sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending file");
     sendFile(file);
     return;
+  }
+
+  void FtpSession::handleFtpCommandSIZE(const std::string& param)
+  {
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+      return;
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileRead) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
+
+    std::string local_path = toLocalPath(param);
+
+    std::ios::openmode open_mode =
+       std::ios::ate | (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
+#if defined(WIN32) && !defined(__GNUG__)
+    std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
+#else
+    std::ifstream file(local_path, open_mode);
+#endif
+
+    if (!file.good())
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for size retrieval");
+      return;
+    }
+
+    // RFC 3659 actually states that the returned size should depend on the STRU, MODE, and TYPE and that
+    // the returned size should be exact. We don't comply with this here. The size returned is the
+    // size for TYPE=I.
+    auto file_size = file.tellg();
+    if (std::fstream::pos_type(-1) == file_size)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error getting file size");
+      return;
+    }
+
+    // Form reply string
+    std::stringstream rep;
+    rep << file_size;
+
+    sendFtpMessage(FtpReplyCode::FILE_STATUS, rep.str());
   }
 
   void FtpSession::handleFtpCommandSTOR(const std::string& param)
