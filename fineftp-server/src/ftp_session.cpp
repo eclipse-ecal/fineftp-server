@@ -174,7 +174,6 @@ namespace fineftp
 
       // Ftp service commands
       { "RETR", std::bind(&FtpSession::handleFtpCommandRETR, this, std::placeholders::_1) },
-      { "SIZE", std::bind(&FtpSession::handleFtpCommandSIZE, this, std::placeholders::_1) },
       { "STOR", std::bind(&FtpSession::handleFtpCommandSTOR, this, std::placeholders::_1) },
       { "STOU", std::bind(&FtpSession::handleFtpCommandSTOU, this, std::placeholders::_1) },
       { "APPE", std::bind(&FtpSession::handleFtpCommandAPPE, this, std::placeholders::_1) },
@@ -198,6 +197,7 @@ namespace fineftp
       // Modern FTP Commands
       { "FEAT", std::bind(&FtpSession::handleFtpCommandFEAT, this, std::placeholders::_1) },
       { "OPTS", std::bind(&FtpSession::handleFtpCommandOPTS, this, std::placeholders::_1) },
+      { "SIZE", std::bind(&FtpSession::handleFtpCommandSIZE, this, std::placeholders::_1) },
     };
 
     auto command_it = command_map.find(ftp_command);
@@ -1084,8 +1084,9 @@ namespace fineftp
     std::stringstream ss;
     ss << "211- Feature List:\r\n";
     ss << " UTF8\r\n";
+    ss << " SIZE\r\n";
     ss << " LANG EN\r\n";
-    ss << "211 end\r\n";
+    ss << "211 END\r\n";
 
     sendRawFtpMessage(ss.str());
   }
