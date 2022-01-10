@@ -1,3 +1,4 @@
+[![Windows](https://github.com/continental/fineftp-server/actions/workflows/build-windows.yml/badge.svg)](https://github.com/continental/fineftp-server/actions/workflows/build-windows.yml) [![Ubuntu](https://github.com/continental/fineftp-server/actions/workflows/build-ubuntu.yml/badge.svg)](https://github.com/continental/fineftp-server/actions/workflows/build-ubuntu.yml) [![macOS](https://github.com/continental/fineftp-server/actions/workflows/build-macos.yml/badge.svg)](https://github.com/continental/fineftp-server/actions/workflows/build-macos.yml)
 
 # fineFTP Server
 
