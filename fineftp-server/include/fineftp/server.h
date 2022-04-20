@@ -5,8 +5,8 @@
 
 #include <fineftp/permissions.h>
 
-#include "fineftp_version.h"
-#include "fineftp_export.h"
+#include <fineftp/fineftp_version.h>
+#include <fineftp/fineftp_export.h>
 
 namespace fineftp
 {
