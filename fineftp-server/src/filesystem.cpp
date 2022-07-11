@@ -14,6 +14,7 @@
 
 #else // WIN32
 
+#include <cstring>
 #include <dirent.h>
 
 #endif // WIN32
