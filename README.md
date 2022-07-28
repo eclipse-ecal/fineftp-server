@@ -1,4 +1,4 @@
-[![Windows](https://github.com/continental/fineftp-server/actions/workflows/build-windows.yml/badge.svg)](https://github.com/continental/fineftp-server/actions/workflows/build-windows.yml) [![Ubuntu](https://github.com/continental/fineftp-server/actions/workflows/build-ubuntu.yml/badge.svg)](https://github.com/continental/fineftp-server/actions/workflows/build-ubuntu.yml) [![macOS](https://github.com/continental/fineftp-server/actions/workflows/build-macos.yml/badge.svg)](https://github.com/continental/fineftp-server/actions/workflows/build-macos.yml)
+[![Windows](https://github.com/eclipse-ecal/fineftp-server/actions/workflows/build-windows.yml/badge.svg)](https://github.com/eclipse-ecal/fineftp-server/actions/workflows/build-windows.yml) [![Ubuntu](https://github.com/eclipse-ecal/fineftp-server/actions/workflows/build-ubuntu.yml/badge.svg)](https://github.com/eclipse-ecal/fineftp-server/actions/workflows/build-ubuntu.yml) [![macOS](https://github.com/eclipse-ecal/fineftp-server/actions/workflows/build-macos.yml/badge.svg)](https://github.com/eclipse-ecal/fineftp-server/actions/workflows/build-macos.yml)
 
 # fineFTP Server
 
@@ -55,7 +55,7 @@ There is an example project provided that will create an FTP Server at `C:\` (Wi
 
 2. Checkout this repo and the asio submodule
 	```console
-	git clone https://github.com/continental/fineftp-server.git
+	git clone https://github.com/eclipse-ecal/fineftp-server.git
 	cd fineftp-server
 	git submodule init
 	git submodule update
