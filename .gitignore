@@ -8,6 +8,7 @@ ipch
 *.opendb
 *.db
 /_build
+/samples/integration_test/_build
 /_install
 /.vs
 /CMakeLists.txt.user

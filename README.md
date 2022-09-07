@@ -72,7 +72,7 @@ There is an example project provided that will create an FTP Server at `C:\` (Wi
 	- Linux: `make`
 	- Windows: Open `_build\fineftp.sln` with Visual Studio and build the example project
 
-5. Start `example` / `example.exe` and connect with your favorite FTP Client (e.g. FileZilla) on port 2121 *(This port is used so you don't need root privileges to start the FTP server)*
+5. Start `fineftp_example` / `fineftp_example.exe` and connect with your favorite FTP Client (e.g. FileZilla) on port 2121 *(This port is used so you don't need root privileges to start the FTP server)*
 
 
 ## Contribute
