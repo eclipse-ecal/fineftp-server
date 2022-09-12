@@ -11,26 +11,87 @@ env:
 
 jobs:
   build-ubuntu:
+
+    strategy:
+      matrix:
+        library_type: [static, shared]
+        os: [ubuntu-22.04, ubuntu-20.04, ubuntu-18.04]
+
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
-    
+
+    - name: Set Variables
+      run: |
+        if [[ '${{ matrix.library_type }}' == 'static' ]]; then
+          echo "build_shared_libs=OFF"  >> "$GITHUB_ENV"
+          echo "package_postfix=static" >> "$GITHUB_ENV"
+        else
+          echo "build_shared_libs=ON"   >> "$GITHUB_ENV"
+          echo "package_postfix=shared" >> "$GITHUB_ENV"
+        fi
+
     - name: Checkout
       uses: actions/checkout@v2
       with:
         submodules:  'true'
         fetch-depth: 0
 
+    ############################################
+    # Test-compile the project
+    ############################################
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/_build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: |
+           cmake -B ${{github.workspace}}/_build \
+                 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+                 -DBUILD_SHARED_LIBS=${{ env.build_shared_libs }}
 
     - name: Build
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/_build --config ${{env.BUILD_TYPE}}
-      
+
+    - name: CPack
+      run: cpack -G DEB
+      working-directory: ${{ github.workspace }}/_build
+
+    - name: Upload binaries
+      uses: actions/upload-artifact@v2
+      with:
+        name: fineftp-server-${{ matrix.os }}-${{ env.package_postfix }}
+        path: ${{github.workspace}}/_build/_package/*.deb
+
+
+    ############################################
+    # Test if our binary can be linked against
+    ############################################
+
+    - name: Install binaries
+      shell: bash
+      run: sudo dpkg -i ${{ github.workspace }}/_build/_package/*.deb
+
+    - name: Compile integration test (Release)
+      run: |
+           cmake -B ${{github.workspace}}/samples/integration_test/_build/release -DCMAKE_BUILD_TYPE=Release
+           cmake --build ${{github.workspace}}/samples/integration_test/_build/release
+      working-directory: ${{ github.workspace }}/samples/integration_test
+
+    - name: Run integration test (Release)
+      run: ./integration_test
+      working-directory: ${{ github.workspace }}/samples/integration_test/_build/release
+
+    - name: Compile integration test (Debug)
+      run: |
+           cmake -B ${{github.workspace}}/samples/integration_test/_build/debug -DCMAKE_BUILD_TYPE=Debug
+           cmake --build ${{github.workspace}}/samples/integration_test/_build/debug
+      working-directory: ${{ github.workspace }}/samples/integration_test
+
+    - name: Run integration test (Debug)
+      run: ./integration_test
+      working-directory: ${{ github.workspace }}/samples/integration_test/_build/debug
+
