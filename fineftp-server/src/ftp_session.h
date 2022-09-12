@@ -206,8 +206,8 @@ namespace fineftp
     // Data Socket (=> passive mode)
     bool                                           data_type_binary_;
     asio::ip::tcp::acceptor                        data_acceptor_;
-    std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_; // TODO: use
-    std::deque<std::shared_ptr<std::vector<char>>> data_buffer_; // TODO: close data port when the control port closes
+    std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
+    std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
     asio::io_service::strand                       data_buffer_strand_;
     asio::io_service::strand                       file_rw_strand_;
 

@@ -123,6 +123,21 @@ namespace fineftp
                               std::cout << "Control connection closed by client." << std::endl;
                             }
 #endif // !NDEBUG
+                            // Close the data connection, if it is open
+                            {
+                              asio::error_code ec_;
+                              me->data_acceptor_.close(ec_);
+                            }
+
+                            {
+                              auto data_socket = me->data_socket_weakptr_.lock();
+                              if (data_socket)
+                              {
+                                asio::error_code ec_;
+                                data_socket->close(ec_);
+                              }
+                            }
+
                             return;
                           }
 
@@ -1112,6 +1127,7 @@ namespace fineftp
   void FtpSession::sendDirectoryListing(const std::map<std::string, Filesystem::FileStatus>& directory_content)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
                               , [data_socket, directory_content, me = shared_from_this()](auto ec)
@@ -1152,6 +1168,7 @@ namespace fineftp
   void FtpSession::sendNameList(const std::map<std::string, Filesystem::FileStatus>& directory_content)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
                               , [data_socket, directory_content, me = shared_from_this()](auto ec)
@@ -1185,6 +1202,7 @@ namespace fineftp
   void FtpSession::sendFile(std::shared_ptr<IoFile> file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
                               , [data_socket, file, me = shared_from_this()](auto ec)
@@ -1289,6 +1307,7 @@ namespace fineftp
   void FtpSession::receiveFile(std::shared_ptr<IoFile> file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
                               , [data_socket, file, me = shared_from_this()](auto ec)
