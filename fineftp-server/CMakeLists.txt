@@ -111,21 +111,22 @@ create_source_tree(${includes} ${sources})
 
 set(FINEFTP_INSTALL_CMAKE_DIR "lib/cmake/fineftp")
 
-# Install Runtime
-install(
-  TARGETS ${PROJECT_NAME}
-  EXPORT fineftpRuntime
-  RUNTIME DESTINATION "bin"
-  COMPONENT fineftp_server_runtime
-)
-
-# Install libs (-> dev package)
+# Install Runtime & Libs
 install(
   TARGETS ${PROJECT_NAME}
   EXPORT fineftpTargets
-  LIBRARY DESTINATION "lib"
-  ARCHIVE DESTINATION "lib"
-  COMPONENT fineftp_server_dev
+  
+  RUNTIME
+    DESTINATION "bin"
+    COMPONENT fineftp_server_runtime
+
+  LIBRARY
+    DESTINATION "lib"
+    COMPONENT fineftp_server_runtime
+
+  ARCHIVE
+    DESTINATION "lib"
+    COMPONENT fineftp_server_dev
 )
 
 # Install public header files (-> dev package)
