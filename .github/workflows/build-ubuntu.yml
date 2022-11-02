@@ -35,7 +35,7 @@ jobs:
         fi
 
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules:  'true'
         fetch-depth: 0
@@ -61,7 +61,7 @@ jobs:
       working-directory: ${{ github.workspace }}/_build
 
     - name: Upload binaries
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: fineftp-server-${{ matrix.os }}-${{ env.package_postfix }}
         path: ${{github.workspace}}/_build/_package/*.deb
