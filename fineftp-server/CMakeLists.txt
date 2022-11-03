@@ -159,12 +159,12 @@ include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
   "../cmake/fineftpConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/cmake/fineftpConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/cmake_/fineftpConfig.cmake"
   INSTALL_DESTINATION ${FINEFTP_INSTALL_CMAKE_DIR}
   PATH_VARS FINEFTP_INSTALL_CMAKE_DIR
 )
 install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/cmake/fineftpConfig.cmake"
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/cmake_/fineftpConfig.cmake"
   DESTINATION ${FINEFTP_INSTALL_CMAKE_DIR}
   COMPONENT fineftp_server_dev
 )
