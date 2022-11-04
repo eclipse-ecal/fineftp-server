@@ -10,7 +10,7 @@ env:
   INSTALL_PREFIX: _install
   PROJECT_NAME:   fineftp-server
   VS_TOOLSET:     v140
-  VS_NAME:        VS2015
+  VS_NAME:        vs2015
 
 jobs:
   build-windows:
