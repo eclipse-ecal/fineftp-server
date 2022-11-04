@@ -35,7 +35,7 @@ jobs:
           echo "package_postfix=shared" >> "$GITHUB_ENV"
         fi
 
-    - name: Ubuntu 18.04: Getting closer to vanilla Ubuntu 18.04
+    - name: Getting closer to vanilla Ubuntu 18.04
       run: |
         if [[ '${{ matrix.os }}' == 'ubuntu-18.04' ]]; then
 
