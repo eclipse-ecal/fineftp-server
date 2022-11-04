@@ -8,7 +8,7 @@ on:
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   INSTALL_PREFIX: _install
-  PROJECT_NAME:   udpcap
+  PROJECT_NAME:   fineftp-server
   VS_TOOLSET:     v140
   VS_NAME:        VS2015
 
