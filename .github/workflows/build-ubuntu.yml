@@ -87,7 +87,7 @@ jobs:
 
     - name: Read Project Version from CMakeCache
       run: |
-        cmake_project_version_string=$(cat CMakeCache.txt | grep "^CMAKE_PROJECT_VERSION:")
+        cmake_project_version_string=$(cat "${{github.workspace}}/_build/CMakeCache.txt" | grep "^CMAKE_PROJECT_VERSION:")
         arr=(${cmake_project_version_string//=/ })
         cmake_project_version=${arr[1]}
         echo "CMAKE_PROJECT_VERSION=$cmake_project_version"  >> "$Env:GITHUB_ENV"
