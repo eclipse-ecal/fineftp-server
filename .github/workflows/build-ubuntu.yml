@@ -7,7 +7,8 @@ on:
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
+  BUILD_TYPE:   Release
+  PROJECT_NAME: fineftp-server
 
 jobs:
   build-ubuntu:
@@ -34,6 +35,34 @@ jobs:
           echo "package_postfix=shared" >> "$GITHUB_ENV"
         fi
 
+    - name: Getting closer to vanilla Ubuntu 18.04
+      run: |
+        if [[ '${{ matrix.os }}' == 'ubuntu-18.04' ]]; then
+
+          sudo apt-get -y update
+        
+          echo "Creating directory for libgcc1"
+          mkdir libgcc1_deb
+          cd libgcc1_deb
+          pwd
+        
+          echo "Downloading bionic-security libgcc1"
+          apt-get download -t bionic-security libgcc1
+        
+          echo "Purging GH Actions toolchain PPA"
+          sudo apt-get -y install ppa-purge
+          sudo ppa-purge -y ubuntu-toolchain-r/test
+        
+          echo "installing libgcc1_deb"
+          sudo dpkg -i *
+        
+          echo "Installing g++"
+          sudo apt-get -y install g++
+        
+          cd ..
+        fi
+      shell: bash
+
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -56,16 +85,29 @@ jobs:
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/_build --config ${{env.BUILD_TYPE}}
 
+    - name: Read Project Version from CMakeCache
+      run: |
+        cmake_project_version_string=$(cat "${{github.workspace}}/_build/CMakeCache.txt" | grep "^CMAKE_PROJECT_VERSION:")
+        arr=(${cmake_project_version_string//=/ })
+        cmake_project_version=${arr[1]}
+        echo "CMAKE_PROJECT_VERSION=$cmake_project_version"  >> "$GITHUB_ENV"
+      shell: bash
+
     - name: CPack
       run: cpack -G DEB
       working-directory: ${{ github.workspace }}/_build
 
+    - name: Rename .deb installer
+      run: |
+        mv *.deb '${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-${{ matrix.os }}-${{ env.package_postfix }}.deb'
+      shell: bash
+      working-directory: ${{github.workspace}}/_build/_package/
+
     - name: Upload binaries
       uses: actions/upload-artifact@v3
       with:
-        name: fineftp-server-${{ matrix.os }}-${{ env.package_postfix }}
+        name: ${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-${{ matrix.os }}-${{ env.package_postfix }}
         path: ${{github.workspace}}/_build/_package/*.deb
-
 
     ############################################
     # Test if our binary can be linked against

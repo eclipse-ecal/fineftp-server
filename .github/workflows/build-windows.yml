@@ -8,6 +8,9 @@ on:
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   INSTALL_PREFIX: _install
+  PROJECT_NAME:   fineftp-server
+  VS_TOOLSET:     v140
+  VS_NAME:        vs2015
 
 jobs:
   build-windows:
@@ -15,6 +18,7 @@ jobs:
     strategy:
       matrix:
         library_type: [static, shared]
+        build_arch:   [x64, win32]
 
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
@@ -53,28 +57,33 @@ jobs:
       run: |
            cmake -B ${{github.workspace}}/_build ^
                  -G "Visual Studio 16 2019" ^
-                 -A x64 ^
-                 -T v140 ^
+                 -A ${{ matrix.build_arch }} ^
+                 -T ${{ env.VS_TOOLSET }} ^
                  -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ^
                  -DBUILD_SHARED_LIBS=${{ env.build_shared_libs }}
 
     - name: Build (Release)
-      # Build your program with the given configuration
       shell: cmd
       run: |
            cmake --build ${{github.workspace}}/_build --config Release --parallel
            cmake --build ${{github.workspace}}/_build --config Release --target INSTALL
       
     - name: Build (Debug)
-      # Build your program with the given configuration
       shell: cmd
       run: |
            cmake --build ${{github.workspace}}/_build --config Debug --parallel
            cmake --build ${{github.workspace}}/_build --config Debug --target INSTALL
+           
+    - name: Read Project Version from CMakeCache
+      run: |
+        $cmake_project_version_line = cat ${{github.workspace}}/_build/CMakeCache.txt | Select-String -Pattern ^CMAKE_PROJECT_VERSION:
+        $cmake_project_version = $cmake_project_version_line.Line.split("=")[1]
+        echo "CMAKE_PROJECT_VERSION=$cmake_project_version"  >> "$Env:GITHUB_ENV"
+
     - name: Upload binaries
       uses: actions/upload-artifact@v3
       with:
-        name: fineftp-server-win64-${{ matrix.library_type }}
+        name: ${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-windows-${{ matrix.build_arch }}-${{ env.VS_NAME }}-${{ matrix.library_type }}
         path: ${{github.workspace}}/${{env.INSTALL_PREFIX}}
 
     ############################################
@@ -85,7 +94,7 @@ jobs:
       shell: cmd
       run: |
            cmake -B ${{github.workspace}}/samples/integration_test/_build ^
-                 -A x64 ^
+                 -A ${{ matrix.build_arch }} ^
                  -DCMAKE_PREFIX_PATH=${{github.workspace}}/${{env.INSTALL_PREFIX}}
       working-directory: ${{ github.workspace }}/samples/integration_test
 
