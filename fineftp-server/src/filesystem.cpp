@@ -115,7 +115,7 @@ namespace Filesystem
     permission_string[4] = ((file_status_.st_mode & S_IWRITE) != 0) ? 'w' : '-';
     permission_string[5] = ((file_status_.st_mode & S_IEXEC) != 0)  ? 'x' : '-';
     // Owner
-    permission_string[6] = (((file_status_.st_mode & S_IREAD) != 0)  ? 'r' : '-';
+    permission_string[6] = ((file_status_.st_mode & S_IREAD) != 0)  ? 'r' : '-';
     permission_string[7] = ((file_status_.st_mode & S_IWRITE) != 0) ? 'w' : '-';
     permission_string[8] = ((file_status_.st_mode & S_IEXEC) != 0)  ? 'x' : '-';
 #else // WIN32
