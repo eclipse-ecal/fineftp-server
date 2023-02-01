@@ -24,7 +24,7 @@ namespace fineftp
       }
       else
       {
-        anonymous_user_ = std::shared_ptr<FtpUser>(new FtpUser(password, local_root_path, permissions));
+        anonymous_user_ = std::make_shared<FtpUser>(password, local_root_path, permissions);
 #ifndef NDEBUG
         std::cout << "Successfully added anonymous user." << std::endl;
 #endif // !NDEBUG
@@ -36,7 +36,7 @@ namespace fineftp
       auto user_it = database_.find(username);
       if (user_it == database_.end())
       {
-        database_.emplace(username, std::shared_ptr<FtpUser>(new FtpUser(password, local_root_path, permissions)));
+        database_.emplace(username, std::make_shared<FtpUser>(password, local_root_path, permissions));
 #ifndef NDEBUG
         std::cout << "Successfully added user \"" << username << "\"." << std::endl;
 #endif // !NDEBUG

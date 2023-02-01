@@ -45,6 +45,7 @@ Checks: "-*,
   -modernize-concat-nested-namespaces,
   -modernize-return-braced-init-list,
   -modernize-use-nodiscard,
+  -modernize-avoid-bind,
   
   performance-*,
   

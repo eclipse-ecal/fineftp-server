@@ -330,8 +330,8 @@ namespace Filesystem
        *    \\Host
        */
 
-      std::regex const win_local_drive("^[a-zA-Z]\\:");                // Local drive
-      std::regex const win_network_drive("^[/\\\\]{2}[^/\\\\]+");      // Network path starting with two slashes or backslashes followed by a hostname
+      std::regex const win_local_drive(R"(^[a-zA-Z]\:)");             // Local drive
+      std::regex const win_network_drive(R"(^[/\\]{2}[^/\\]+)");      // Network path starting with two slashes or backslashes followed by a hostname
 
       if (std::regex_search(path, win_local_drive))
       {
