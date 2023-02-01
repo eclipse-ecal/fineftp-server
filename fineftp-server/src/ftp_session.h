@@ -36,9 +36,9 @@ namespace fineftp
       IoFile(const IoFile&)            = delete;
       IoFile& operator=(const IoFile&) = delete;
 
-      // Move
-      IoFile& operator=(IoFile&&)      = default;
-      IoFile(IoFile&&)                 = default;
+      // Move disabled (as we are storing the shared_from_this() pointer in lambda captures)
+      IoFile& operator=(IoFile&&)      = delete;
+      IoFile(IoFile&&)                 = delete;
 
       ~IoFile()
       {
@@ -138,32 +138,32 @@ namespace fineftp
     void sendDirectoryListing   (const std::map<std::string, Filesystem::FileStatus>& directory_content);
     void sendNameList           (const std::map<std::string, Filesystem::FileStatus>& directory_content);
 
-    void sendFile               (std::shared_ptr<IoFile>                file);
+    void sendFile               (const std::shared_ptr<IoFile>&                file);
 
-    void readDataFromFileAndSend(std::shared_ptr<IoFile>                file
-                               , std::shared_ptr<asio::ip::tcp::socket> data_socket);
+    void readDataFromFileAndSend(const std::shared_ptr<IoFile>&                file
+                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
-    void addDataToBufferAndSend (std::shared_ptr<std::vector<char>>     data
-                               , std::shared_ptr<asio::ip::tcp::socket> data_socket
-                               , std::function<void(void)>              fetch_more = []() {return; });
+    void addDataToBufferAndSend (const std::shared_ptr<std::vector<char>>&     data
+                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket
+                               , const std::function<void(void)>&              fetch_more = []() {return; });
 
-    void writeDataToSocket      (std::shared_ptr<asio::ip::tcp::socket> data_socket
-                               , std::function<void(void)>              fetch_more);
+    void writeDataToSocket      (const std::shared_ptr<asio::ip::tcp::socket>& data_socket
+                               , const std::function<void(void)>&              fetch_more);
 
   ////////////////////////////////////////////////////////
   // FTP data-socket receive
   ////////////////////////////////////////////////////////
   private:
-    void receiveFile(std::shared_ptr<IoFile> file);
+    void receiveFile(const std::shared_ptr<IoFile>& file);
 
-    void receiveDataFromSocketAndWriteToFile(std::shared_ptr<IoFile>                file
-                                           , std::shared_ptr<asio::ip::tcp::socket> data_socket);
+    void receiveDataFromSocketAndWriteToFile(const std::shared_ptr<IoFile>&                file
+                                           , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
-    void writeDataToFile(std::shared_ptr<std::vector<char>> data
-                       , std::shared_ptr<IoFile>            file
-                       , std::function<void(void)>          fetch_more = []() {return; });
+    void writeDataToFile(const std::shared_ptr<std::vector<char>>& data
+                       , const std::shared_ptr<IoFile>&            file
+                       , const std::function<void(void)>&          fetch_more = []() {return; });
 
-    void endDataReceiving(std::shared_ptr<IoFile> file);
+    void endDataReceiving(const std::shared_ptr<IoFile>& file);
 
   ////////////////////////////////////////////////////////
   // Helpers
@@ -171,7 +171,7 @@ namespace fineftp
   private:
     std::string toAbsoluteFtpPath(const std::string& rel_or_abs_ftp_path) const;
     std::string toLocalPath(const std::string& ftp_path) const;
-    std::string createQuotedFtpPath(const std::string& unquoted_ftp_path) const;
+    static std::string createQuotedFtpPath(const std::string& unquoted_ftp_path);
 
     /** @brief Checks if a path is renamable
     *

@@ -29,8 +29,8 @@ namespace fineftp
 
     ~FtpServerImpl();
 
-    bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions);
-    bool addUserAnonymous(const std::string& local_root_path, const Permission permissions);
+    bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions);
+    bool addUserAnonymous(const std::string& local_root_path, Permission permissions);
 
     bool start(size_t thread_count = 1);
 

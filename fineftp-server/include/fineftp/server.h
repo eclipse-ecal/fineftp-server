@@ -102,7 +102,7 @@ namespace fineftp
      * 
      * @return True if adding the user was successful (i.e. it didn't exit already).
      */
-    FINEFTP_EXPORT bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions);
+    FINEFTP_EXPORT bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions);
     
     /**
      * @brief Adds the "anonymous" / "ftp" user that FTP clients use to access FTP servers without password
@@ -112,7 +112,7 @@ namespace fineftp
      * 
      * @return True if adding the anonymous user was successful (i.e. it didn't exit already).
      */
-    FINEFTP_EXPORT bool addUserAnonymous(const std::string& local_root_path, const Permission permissions);
+    FINEFTP_EXPORT bool addUserAnonymous(const std::string& local_root_path, Permission permissions);
 
     /**
      * @brief Starts the FTP Server

@@ -107,30 +107,30 @@ namespace Filesystem
 
 #ifdef WIN32
     // Root
-    permission_string[0] = (file_status_.st_mode & S_IREAD)  ? 'r' : '-';
-    permission_string[1] = (file_status_.st_mode & S_IWRITE) ? 'w' : '-';
-    permission_string[2] = (file_status_.st_mode & S_IEXEC)  ? 'x' : '-';
+    permission_string[0] = ((file_status_.st_mode & S_IREAD) != 0)  ? 'r' : '-';
+    permission_string[1] = ((file_status_.st_mode & S_IWRITE) != 0) ? 'w' : '-';
+    permission_string[2] = ((file_status_.st_mode & S_IEXEC) != 0)  ? 'x' : '-';
     // Group
-    permission_string[3] = (file_status_.st_mode & S_IREAD)  ? 'r' : '-';
-    permission_string[4] = (file_status_.st_mode & S_IWRITE) ? 'w' : '-';
-    permission_string[5] = (file_status_.st_mode & S_IEXEC)  ? 'x' : '-';
+    permission_string[3] = ((file_status_.st_mode & S_IREAD) != 0)  ? 'r' : '-';
+    permission_string[4] = ((file_status_.st_mode & S_IWRITE) != 0) ? 'w' : '-';
+    permission_string[5] = ((file_status_.st_mode & S_IEXEC) != 0)  ? 'x' : '-';
     // Owner
-    permission_string[6] = (file_status_.st_mode & S_IREAD)  ? 'r' : '-';
-    permission_string[7] = (file_status_.st_mode & S_IWRITE) ? 'w' : '-';
-    permission_string[8] = (file_status_.st_mode & S_IEXEC)  ? 'x' : '-';
+    permission_string[6] = (((file_status_.st_mode & S_IREAD) != 0)  ? 'r' : '-';
+    permission_string[7] = ((file_status_.st_mode & S_IWRITE) != 0) ? 'w' : '-';
+    permission_string[8] = ((file_status_.st_mode & S_IEXEC) != 0)  ? 'x' : '-';
 #else // WIN32
     // Root
-    permission_string[0] = (file_status_.st_mode & S_IRUSR) ? 'r' : '-';
-    permission_string[1] = (file_status_.st_mode & S_IWUSR) ? 'w' : '-';
-    permission_string[2] = (file_status_.st_mode & S_IXUSR) ? 'x' : '-';
+    permission_string[0] = ((file_status_.st_mode & S_IRUSR) != 0) ? 'r' : '-';
+    permission_string[1] = ((file_status_.st_mode & S_IWUSR) != 0) ? 'w' : '-';
+    permission_string[2] = ((file_status_.st_mode & S_IXUSR) != 0) ? 'x' : '-';
     // Group
-    permission_string[3] = (file_status_.st_mode & S_IRGRP) ? 'r' : '-';
-    permission_string[4] = (file_status_.st_mode & S_IWGRP) ? 'w' : '-';
-    permission_string[5] = (file_status_.st_mode & S_IXGRP) ? 'x' : '-';
+    permission_string[3] = ((file_status_.st_mode & S_IRGRP) != 0) ? 'r' : '-';
+    permission_string[4] = ((file_status_.st_mode & S_IWGRP) != 0) ? 'w' : '-';
+    permission_string[5] = ((file_status_.st_mode & S_IXGRP) != 0) ? 'x' : '-';
     // Owner
-    permission_string[6] = (file_status_.st_mode & S_IROTH) ? 'r' : '-';
-    permission_string[7] = (file_status_.st_mode & S_IWOTH) ? 'w' : '-';
-    permission_string[8] = (file_status_.st_mode & S_IXOTH) ? 'x' : '-';
+    permission_string[6] = ((file_status_.st_mode & S_IROTH) != 0) ? 'r' : '-';
+    permission_string[7] = ((file_status_.st_mode & S_IWOTH) != 0) ? 'w' : '-';
+    permission_string[8] = ((file_status_.st_mode & S_IXOTH) != 0) ? 'x' : '-';
 #endif // WIN32
     return permission_string;
   }
@@ -301,7 +301,7 @@ namespace Filesystem
         return content;
     }
 
-    while ((dirp = readdir(dp)) != NULL)
+    while ((dirp = readdir(dp)) != nullptr)
     {
       content.emplace(std::string(dirp->d_name), FileStatus(path + "/" + std::string(dirp->d_name)));
     }
@@ -403,7 +403,7 @@ namespace Filesystem
             }
             else
             {
-              components.push_back("..");
+              components.emplace_back("..");
             }
           }
         }
@@ -420,7 +420,7 @@ namespace Filesystem
       } while (start < path.size());
 
       // Join the components again
-      if (components.size() == 0 && absolute_root.empty())
+      if (components.empty() && absolute_root.empty())
       {
           return ".";
       }

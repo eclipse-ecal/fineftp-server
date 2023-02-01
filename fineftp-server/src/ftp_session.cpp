@@ -290,14 +290,12 @@ namespace fineftp
   void FtpSession::handleFtpCommandACCT(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandCWD(const std::string& param)
   {
       sendFtpMessage(executeCWD(param));
-      return;
-  }
+ }
 
   void FtpSession::handleFtpCommandCDUP(const std::string& /*param*/)
   {
@@ -338,23 +336,20 @@ namespace fineftp
   void FtpSession::handleFtpCommandREIN(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Unsupported command");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandQUIT(const std::string& /*param*/)
   {
     logged_in_user_ = nullptr;
     sendFtpMessage(FtpReplyCode::SERVICE_CLOSING_CONTROL_CONNECTION, "Connection shutting down");
-    return;
-  }
+ }
 
   // Transfer parameter commands
 
   void FtpSession::handleFtpCommandPORT(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "FTP active mode is not supported by this server");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandPASV(const std::string& /*param*/)
   {
@@ -421,8 +416,7 @@ namespace fineftp
     stream << ((port >> 8) & 0xff) << "," << (port & 0xff) << ")";
 
     sendFtpMessage(FtpReplyCode::ENTERING_PASSIVE_MODE, "Entering passive mode " + stream.str());
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandTYPE(const std::string& param)
   {
@@ -457,14 +451,12 @@ namespace fineftp
   void FtpSession::handleFtpCommandSTRU(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandMODE(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
-    return;
-  }
+ }
 
   // Ftp service commands
   void FtpSession::handleFtpCommandRETR(const std::string& param)
@@ -498,8 +490,7 @@ namespace fineftp
 
     sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending file");
     sendFile(file);
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandSIZE(const std::string& param)
   {
@@ -599,14 +590,12 @@ namespace fineftp
 
     sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
     receiveFile(file);
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandSTOU(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandAPPE(const std::string& param)
   {
@@ -647,20 +636,17 @@ namespace fineftp
 
     sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
     receiveFile(file);
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandALLO(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandREST(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandRNFR(const std::string& param)
   {
@@ -757,8 +743,7 @@ namespace fineftp
   void FtpSession::handleFtpCommandABOR(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandDELE(const std::string& param)
   {
@@ -922,8 +907,7 @@ namespace fineftp
     }
 
     sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(ftp_working_directory_));
-    return;
-  }
+ }
 
   void FtpSession::handleFtpCommandLIST(const std::string& param)
   {
@@ -1199,7 +1183,7 @@ namespace fineftp
                                 });
   }
 
-  void FtpSession::sendFile(std::shared_ptr<IoFile> file)
+  void FtpSession::sendFile(const std::shared_ptr<IoFile>& file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
     data_socket_weakptr_ = data_socket;
@@ -1221,7 +1205,7 @@ namespace fineftp
 
   }
 
-  void FtpSession::readDataFromFileAndSend(std::shared_ptr<IoFile> file, std::shared_ptr<asio::ip::tcp::socket> data_socket)
+  void FtpSession::readDataFromFileAndSend(const std::shared_ptr<IoFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
     file_rw_strand_.post([me = shared_from_this(), file, data_socket]()
                         {
@@ -1244,7 +1228,7 @@ namespace fineftp
                         });
   }
 
-  void FtpSession::addDataToBufferAndSend(std::shared_ptr<std::vector<char>> data, std::shared_ptr<asio::ip::tcp::socket> data_socket, std::function<void(void)> fetch_more)
+  void FtpSession::addDataToBufferAndSend(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<asio::ip::tcp::socket>& data_socket, const std::function<void(void)>& fetch_more)
   {
     data_buffer_strand_.post([me = shared_from_this(), data, data_socket, fetch_more]()
                             {
@@ -1259,7 +1243,7 @@ namespace fineftp
                             });
   }
 
-  void FtpSession::writeDataToSocket(std::shared_ptr<asio::ip::tcp::socket> data_socket, std::function<void(void)> fetch_more)
+  void FtpSession::writeDataToSocket(const std::shared_ptr<asio::ip::tcp::socket>& data_socket, const std::function<void(void)>& fetch_more)
   {
     data_buffer_strand_.post(
                     [me = shared_from_this(), data_socket, fetch_more]()
@@ -1304,7 +1288,7 @@ namespace fineftp
   // FTP data-socket receive
   ////////////////////////////////////////////////////////
 
-  void FtpSession::receiveFile(std::shared_ptr<IoFile> file)
+  void FtpSession::receiveFile(const std::shared_ptr<IoFile>& file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
     data_socket_weakptr_ = data_socket;
@@ -1322,7 +1306,7 @@ namespace fineftp
                                 });
   }
 
-  void FtpSession::receiveDataFromSocketAndWriteToFile(std::shared_ptr<IoFile> file, std::shared_ptr<asio::ip::tcp::socket> data_socket)
+  void FtpSession::receiveDataFromSocketAndWriteToFile(const std::shared_ptr<IoFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
     std::shared_ptr<std::vector<char>> const buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
       
@@ -1349,7 +1333,7 @@ namespace fineftp
   }
 
 
-  void FtpSession::writeDataToFile(std::shared_ptr<std::vector<char>> data, std::shared_ptr<IoFile> file, std::function<void(void)> fetch_more)
+  void FtpSession::writeDataToFile(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<IoFile>& file, const std::function<void(void)>& fetch_more)
   {
     file_rw_strand_.post([me = shared_from_this(), data, file, fetch_more]
                         {
@@ -1358,7 +1342,7 @@ namespace fineftp
                         });
   }
 
-  void FtpSession::endDataReceiving(std::shared_ptr<IoFile> file)
+  void FtpSession::endDataReceiving(const std::shared_ptr<IoFile>& file)
   {
     file_rw_strand_.post([me = shared_from_this(), file]
                         {
@@ -1399,7 +1383,7 @@ namespace fineftp
     return fineftp::Filesystem::cleanPathNative(logged_in_user_->local_root_path_ + "/" + absolute_ftp_path);
   }
 
-  std::string FtpSession::createQuotedFtpPath(const std::string& unquoted_ftp_path) const
+  std::string FtpSession::createQuotedFtpPath(const std::string& unquoted_ftp_path)
   {
     std::string output;
     output.reserve(unquoted_ftp_path.size() * 2 + 2);
