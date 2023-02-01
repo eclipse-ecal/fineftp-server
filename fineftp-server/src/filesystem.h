@@ -32,14 +32,11 @@ namespace fineftp
     public:
       FileStatus(const std::string& path);
 
-      ~FileStatus();
-
       bool isOk() const;
       FileType type() const;
 
       int64_t fileSize() const;
 
-  #ifdef WIN32
       bool permissionRootRead()     const;
       bool permissionRootWrite()    const;
       bool permissionRootExecute()  const;
@@ -49,18 +46,6 @@ namespace fineftp
       bool permissionOwnerRead()    const;
       bool permissionOwnerWrite()   const;
       bool permissionOwnerExecute() const;
-  #else // WIN32
-      bool permissionRootRead()     const;
-      bool permissionRootWrite()    const;
-      bool permissionRootExecute()  const;
-      bool permissionGroupRead()    const;
-      bool permissionGroupWrite()   const;
-      bool permissionGroupExecute() const;
-      bool permissionOwnerRead()    const;
-      bool permissionOwnerWrite()   const;
-      bool permissionOwnerExecute() const;
-  #endif // WIN32
-
 
       std::string permissionString() const;
 

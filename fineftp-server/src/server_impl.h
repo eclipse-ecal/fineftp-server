@@ -19,6 +19,14 @@ namespace fineftp
   public:
     FtpServerImpl(const std::string& address, uint16_t port);
 
+    // Copy (disabled)
+    FtpServerImpl(const FtpServerImpl&)            = delete;
+    FtpServerImpl& operator=(const FtpServerImpl&) = delete;
+
+    // Move (disabled, as we are storing the this pointer in lambda captures)
+    FtpServerImpl& operator=(FtpServerImpl&&)      = delete;
+    FtpServerImpl(FtpServerImpl&&)                 = delete;
+
     ~FtpServerImpl();
 
     bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions);
@@ -35,7 +43,7 @@ namespace fineftp
     std::string getAddress();
 
   private:
-    void acceptFtpSession(std::shared_ptr<FtpSession> ftp_session, asio::error_code const& error);
+    void acceptFtpSession(const std::shared_ptr<FtpSession>& ftp_session, asio::error_code const& error);
 
   private:
     UserDatabase   ftp_users_;

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <mutex>
 #include <iomanip>
+#include <array>
 
 #ifdef WIN32
 
@@ -30,6 +31,7 @@ namespace Filesystem
 
   FileStatus::FileStatus(const std::string& path)
     : path_(path)
+    , file_status_{}
   {
 #ifdef WIN32
     std::wstring w_path_ = StrConvert::Utf8ToWide(path);
@@ -39,8 +41,6 @@ namespace Filesystem
 #endif // WIN32
     is_ok_ = (error_code == 0);
   }
-
-  FileStatus::~FileStatus() {}
 
   bool FileStatus::isOk() const
   {
@@ -164,7 +164,7 @@ namespace Filesystem
     // https://files.stairways.com/other/ftp-list-specs-info.txt
 
     auto now = std::chrono::system_clock::now();
-    time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+    time_t const now_time_t = std::chrono::system_clock::to_time_t(now);
     //struct tm* now_timeinfo = localtime(&now_time_t);
     //int current_year = now_timeinfo->tm_year;
 
@@ -192,12 +192,12 @@ namespace Filesystem
     }
 #endif
 
-    int current_year = now_timeinfo.tm_year;
-    int file_year    = file_timeinfo.tm_year;
+    int const current_year = now_timeinfo.tm_year;
+    int const file_year    = file_timeinfo.tm_year;
 
 
     // Hardcoded english month names, because returning a localized string by strftime here may break certain FTP clients
-    static std::string month_names[] =
+    static std::array<std::string, 12> const month_names =
     {
       "Jan",
       "Feb",
@@ -230,7 +230,7 @@ namespace Filesystem
            << "  " << ( file_timeinfo.tm_year + tm_year_base_year );
     }
 
-    return month_names[file_timeinfo.tm_mon] + date.str();
+    return month_names.at(file_timeinfo.tm_mon) + date.str();
   }
 
   bool FileStatus::canOpenDir() const
@@ -257,12 +257,12 @@ namespace Filesystem
     }
     FindClose(hFind);
 #else // WIN32
-    DIR *dp;
-    if ((dp = opendir(path_.c_str())) != NULL)
+    DIR *dp = opendir(path_.c_str());
+    if (dp != nullptr)
     {
       can_open_dir = true;
+      closedir(dp);
     }
-    closedir(dp);
 #endif // WIN32
 
     return can_open_dir;
@@ -293,9 +293,9 @@ namespace Filesystem
     } while (FindNextFileW(hFind, &ffd) != 0);
     FindClose(hFind);
 #else // WIN32
-    DIR *dp;
-    struct dirent *dirp;
-    if((dp = opendir(path.c_str())) == NULL)
+    DIR *dp = opendir(path.c_str());
+    struct dirent *dirp = nullptr;
+    if(dp == nullptr)
     {
         std::cerr << "Error opening directory: " << strerror(errno) << std::endl;
         return content;
@@ -330,8 +330,8 @@ namespace Filesystem
        *    \\Host
        */
 
-      std::regex win_local_drive("^[a-zA-Z]\\:");                // Local drive
-      std::regex win_network_drive("^[/\\\\]{2}[^/\\\\]+");      // Network path starting with two slashes or backslashes followed by a hostname
+      std::regex const win_local_drive("^[a-zA-Z]\\:");                // Local drive
+      std::regex const win_network_drive("^[/\\\\]{2}[^/\\\\]+");      // Network path starting with two slashes or backslashes followed by a hostname
 
       if (std::regex_search(path, win_local_drive))
       {
@@ -341,7 +341,7 @@ namespace Filesystem
       else if (std::regex_search(path, win_network_drive))
       {
         // Window network drive, consisting of \\ and hostname
-        size_t sep_pos = path.find_first_of("/\\", 2);
+        size_t const sep_pos = path.find_first_of("/\\", 2);
         absolute_root = path.substr(0, sep_pos); // If no seperator was found, this will return the entire string
       }
     }
@@ -359,7 +359,8 @@ namespace Filesystem
 
     if (path.size() >= (absolute_root.size() + 1))
     {
-      size_t start, end;
+      size_t start = 0;
+      size_t end   = 0;
       
       if (absolute_root.empty())
         start = 0;
@@ -371,7 +372,7 @@ namespace Filesystem
         if (windows_path)
           end = path.find_first_of("/\\", start);
         else
-          end = path.find_first_of("/", start);
+          end = path.find_first_of('/', start);
 
         std::string this_component;
         if (end == std::string::npos)
@@ -450,11 +451,11 @@ namespace Filesystem
   std::string cleanPathNative(const std::string& path)
   {
 #ifdef WIN32
-    bool windows_path = true;
-    char separator = '\\';
+    constexpr bool windows_path = true;
+    constexpr char separator = '\\';
 #else // WIN32
-    bool windows_path = false;
-    char separator = '/';
+    constexpr bool windows_path = false;
+    constexpr char separator = '/';
 #endif // WIN32
     return cleanPath(path, windows_path, separator);
   }

@@ -70,6 +70,15 @@ namespace fineftp
      */
     FINEFTP_EXPORT FtpServer(uint16_t port = 21);
 
+    // Move
+    FINEFTP_EXPORT FtpServer(FtpServer&&)                 = default;
+    FINEFTP_EXPORT FtpServer& operator=(FtpServer&&)      = default;
+
+    // Non-copyable
+    FINEFTP_EXPORT FtpServer(const FtpServer&)            = delete;
+    FINEFTP_EXPORT FtpServer& operator=(const FtpServer&) = delete;
+
+    // Destructor
     FINEFTP_EXPORT ~FtpServer();
 
     /**
@@ -147,10 +156,6 @@ namespace fineftp
      * @return The ip address the FTP server is listening for.
      */
     FINEFTP_EXPORT std::string getAddress() const;
-
-    // Non-copyable
-    FINEFTP_EXPORT FtpServer(const FtpServer&) = delete;
-    FINEFTP_EXPORT FtpServer& operator=(const FtpServer&) = delete;
 
   private:
     std::unique_ptr<FtpServerImpl> ftp_server_;        /**< Implementation details */

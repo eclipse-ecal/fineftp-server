@@ -32,6 +32,14 @@ namespace fineftp
         file_stream_.rdbuf()->pubsetbuf(stream_buffer_.data(), static_cast<std::streamsize>(stream_buffer_.size()));
       }
 
+      // Copy
+      IoFile(const IoFile&)            = delete;
+      IoFile& operator=(const IoFile&) = delete;
+
+      // Move
+      IoFile& operator=(IoFile&&)      = default;
+      IoFile(IoFile&&)                 = default;
+
       ~IoFile()
       {
         file_stream_.flush();
@@ -47,6 +55,14 @@ namespace fineftp
   ////////////////////////////////////////////////////////
   public:
     FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler);
+
+    // Copy (disabled, as we are inheriting from shared_from_this)
+    FtpSession(const FtpSession&)            = delete;
+    FtpSession& operator=(const FtpSession&) = delete;
+
+    // Move (disabled, as we are inheriting from shared_from_this)
+    FtpSession& operator=(FtpSession&&)      = delete;
+    FtpSession(FtpSession&&)                 = delete;
 
     ~FtpSession();
 

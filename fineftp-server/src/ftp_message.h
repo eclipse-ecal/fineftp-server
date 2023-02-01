@@ -61,9 +61,6 @@ namespace fineftp
       , message_(message)
     {}
 
-    ~FtpMessage()
-    {}
-
     inline FtpReplyCode replyCode() const
     {
       return code_;
