@@ -69,7 +69,7 @@ namespace fineftp
   {
     command_write_strand_.post([me = shared_from_this(), raw_message]()
                                 {
-                                  bool const write_in_progress = !me->command_output_queue_.empty();
+                                  const bool write_in_progress = !me->command_output_queue_.empty();
                                   me->command_output_queue_.push_back(raw_message);
                                   if (!write_in_progress)
                                   {
@@ -159,7 +159,7 @@ namespace fineftp
     std::string ftp_command;
     std::string parameters;
 
-    size_t const space_index = command.find_first_of(' ');
+    const size_t space_index = command.find_first_of(' ');
 
     ftp_command = command.substr(0, space_index);
     std::transform(ftp_command.begin(), ftp_command.end(), ftp_command.begin(), [](char c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
@@ -369,7 +369,7 @@ namespace fineftp
       }
     }
 
-    asio::ip::tcp::endpoint const endpoint(asio::ip::tcp::v4(), 0);
+    const asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), 0);
 
     {
       asio::error_code ec;
@@ -382,8 +382,8 @@ namespace fineftp
       }
     }
     {
-      asio::error_code const ec;
-      data_acceptor_.bind(endpoint);
+      asio::error_code ec;
+      data_acceptor_.bind(endpoint, ec);
       if (ec)
       {
         std::cerr << "Error binding data acceptor: " << ec.message() << std::endl;
@@ -477,10 +477,10 @@ namespace fineftp
       return;
     }
 
-    std::string const local_path = toLocalPath(param);
+    const std::string local_path = toLocalPath(param);
     
-    std::ios::openmode const open_mode = (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
-    std::shared_ptr<IoFile> const file = std::make_shared<IoFile>(local_path, open_mode);
+    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
+    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
 
     if (!file->file_stream_.good())
     {
@@ -505,9 +505,9 @@ namespace fineftp
       return;
     }
 
-    std::string const local_path = toLocalPath(param);
+    const std::string local_path = toLocalPath(param);
 
-    std::ios::openmode const open_mode =
+    const std::ios::openmode open_mode =
        std::ios::ate | (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
 #if defined(WIN32) && !defined(__GNUG__)
     std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
@@ -561,7 +561,7 @@ namespace fineftp
       return;
     }
 
-    std::string const local_path = toLocalPath(param);
+    const std::string local_path = toLocalPath(param);
 
     auto existing_file_filestatus = Filesystem::FileStatus(local_path);
     if (existing_file_filestatus.isOk())
@@ -579,8 +579,8 @@ namespace fineftp
       }
     }
 
-    std::ios::openmode const open_mode = (data_type_binary_ ? (std::ios::out | std::ios::binary) : (std::ios::out));    
-    std::shared_ptr<IoFile> const file = std::make_shared<IoFile>(local_path, open_mode);
+    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::binary) : (std::ios::out));    
+    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
 
     if (!file->file_stream_.good())
     {
@@ -615,7 +615,7 @@ namespace fineftp
       return;
     }
 
-    std::string const local_path = toLocalPath(param);
+    const std::string local_path = toLocalPath(param);
 
     auto existing_file_filestatus = Filesystem::FileStatus(local_path);
     if (!existing_file_filestatus.isOk()
@@ -625,8 +625,8 @@ namespace fineftp
       return;
     }
 
-    std::ios::openmode const open_mode = (data_type_binary_ ? (std::ios::out | std::ios::app | std::ios::binary) : (std::ios::out | std::ios::app));
-    std::shared_ptr<IoFile> const file = std::make_shared<IoFile>(local_path, open_mode);
+    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::app | std::ios::binary) : (std::ios::out | std::ios::app));
+    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
 
     if (!file->file_stream_.good())
     {
@@ -696,8 +696,8 @@ namespace fineftp
 
     if (is_renamable_error.replyCode() == FtpReplyCode::COMMAND_OK)
     {
-      std::string const local_from_path = toLocalPath(rename_from_path_);
-      std::string const local_to_path   = toLocalPath(param);
+      const std::string local_from_path = toLocalPath(rename_from_path_);
+      const std::string local_to_path   = toLocalPath(param);
 
       // Check if the source file exists already. We simple disallow overwriting a
       // file be renaming (the bahavior of the native rename command on Windows
@@ -752,7 +752,7 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
       return;
     }
-    std::string const local_path = toLocalPath(param);
+    const std::string local_path = toLocalPath(param);
 
     auto file_status = Filesystem::FileStatus(local_path);
 
@@ -815,7 +815,7 @@ namespace fineftp
       return;
     }
 
-    std::string const local_path = toLocalPath(param);
+    const std::string local_path = toLocalPath(param);
 
 #ifdef WIN32
     if (RemoveDirectoryW(StrConvert::Utf8ToWide(local_path).c_str()) != 0)
@@ -880,7 +880,7 @@ namespace fineftp
       return;
     }
 #else
-    mode_t const mode = 0755;
+    const mode_t mode = 0755;
     if (mkdir(local_path.c_str(), mode) == 0)
     {
       sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluteFtpPath(param)) + " Successfully created");
@@ -964,7 +964,7 @@ namespace fineftp
       path2dst = param;
     }
 
-    std::string const local_path = toLocalPath(path2dst);
+    const std::string local_path = toLocalPath(path2dst);
     auto dir_status = Filesystem::FileStatus(local_path);
 
     if (dir_status.isOk())
@@ -1012,7 +1012,7 @@ namespace fineftp
       return;
     }
 
-    std::string const local_path = toLocalPath(param);
+    const std::string local_path = toLocalPath(param);
     auto dir_status = Filesystem::FileStatus(local_path);
 
     if (dir_status.isOk())
@@ -1138,8 +1138,8 @@ namespace fineftp
                                   }
 
                                   // Copy the file list into a raw char vector
-                                  std::string const dir_listing_string = stream.str();
-                                  std::shared_ptr<std::vector<char>> const dir_listing_rawdata = std::make_shared<std::vector<char>>();
+                                  const std::string dir_listing_string = stream.str();
+                                  const std::shared_ptr<std::vector<char>> dir_listing_rawdata = std::make_shared<std::vector<char>>();
                                   dir_listing_rawdata->reserve(dir_listing_string.size());
                                   std::copy(dir_listing_string.begin(), dir_listing_string.end(), std::back_inserter(*dir_listing_rawdata));
 
@@ -1172,8 +1172,8 @@ namespace fineftp
                                   }
 
                                   // Copy the file list into a raw char vector
-                                  std::string const dir_listing_string = stream.str();
-                                  std::shared_ptr<std::vector<char>> const dir_listing_rawdata = std::make_shared<std::vector<char>>();
+                                  const std::string dir_listing_string = stream.str();
+                                  const std::shared_ptr<std::vector<char>> dir_listing_rawdata = std::make_shared<std::vector<char>>();
                                   dir_listing_rawdata->reserve(dir_listing_string.size());
                                   std::copy(dir_listing_string.begin(), dir_listing_string.end(), std::back_inserter(*dir_listing_rawdata));
 
@@ -1211,7 +1211,7 @@ namespace fineftp
                         {
                           if(file->file_stream_.eof()) return;
 
-                          std::shared_ptr<std::vector<char>>const buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
+                          const std::shared_ptr<std::vector<char>> buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
                           file->file_stream_.read(buffer->data(), static_cast<std::streamsize>(buffer->size()));
                           auto bytes_read = file->file_stream_.gcount();
                           buffer->resize(static_cast<size_t>(bytes_read));
@@ -1232,7 +1232,7 @@ namespace fineftp
   {
     data_buffer_strand_.post([me = shared_from_this(), data, data_socket, fetch_more]()
                             {
-                              bool const write_in_progress = (!me->data_buffer_.empty());
+                              const bool  write_in_progress = (!me->data_buffer_.empty());
 
                               me->data_buffer_.push_back(data);
 
@@ -1308,7 +1308,7 @@ namespace fineftp
 
   void FtpSession::receiveDataFromSocketAndWriteToFile(const std::shared_ptr<IoFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
-    std::shared_ptr<std::vector<char>> const buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
+    const std::shared_ptr<std::vector<char>> buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
       
     asio::async_read(*data_socket
                     , asio::buffer(*buffer)
@@ -1377,7 +1377,7 @@ namespace fineftp
     assert(logged_in_user_);
 
     // First make the ftp path absolute if it isn't already
-    std::string const absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
+    const std::string absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
 
     // Now map it to the local filesystem
     return fineftp::Filesystem::cleanPathNative(logged_in_user_->local_root_path_ + "/" + absolute_ftp_path);
@@ -1389,7 +1389,7 @@ namespace fineftp
     output.reserve(unquoted_ftp_path.size() * 2 + 2);
     output.push_back('\"');
 
-    for (char const c : unquoted_ftp_path)
+    for (const char c : unquoted_ftp_path)
     {
       output.push_back(c);
       if (c == '\"')            // Escape quote by double-quote
@@ -1473,7 +1473,7 @@ namespace fineftp
     }
 
     auto local_path = toLocalPath(absolute_new_working_dir);
-    Filesystem::FileStatus const file_status(local_path);
+    const Filesystem::FileStatus file_status(local_path);
 
     if (!file_status.isOk())
     {

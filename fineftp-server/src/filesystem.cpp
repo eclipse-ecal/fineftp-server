@@ -164,7 +164,7 @@ namespace Filesystem
     // https://files.stairways.com/other/ftp-list-specs-info.txt
 
     auto now = std::chrono::system_clock::now();
-    time_t const now_time_t = std::chrono::system_clock::to_time_t(now);
+    const time_t now_time_t = std::chrono::system_clock::to_time_t(now);
     //struct tm* now_timeinfo = localtime(&now_time_t);
     //int current_year = now_timeinfo->tm_year;
 
@@ -192,12 +192,12 @@ namespace Filesystem
     }
 #endif
 
-    int const current_year = now_timeinfo.tm_year;
-    int const file_year    = file_timeinfo.tm_year;
+    const int current_year = now_timeinfo.tm_year;
+    const int file_year    = file_timeinfo.tm_year;
 
 
     // Hardcoded english month names, because returning a localized string by strftime here may break certain FTP clients
-    static std::array<std::string, 12> const month_names =
+    static const std::array<std::string, 12> month_names =
     {
       "Jan",
       "Feb",
@@ -330,8 +330,8 @@ namespace Filesystem
        *    \\Host
        */
 
-      std::regex const win_local_drive(R"(^[a-zA-Z]\:)");             // Local drive
-      std::regex const win_network_drive(R"(^[/\\]{2}[^/\\]+)");      // Network path starting with two slashes or backslashes followed by a hostname
+      const std::regex win_local_drive(R"(^[a-zA-Z]\:)");             // Local drive
+      const std::regex win_network_drive(R"(^[/\\]{2}[^/\\]+)");      // Network path starting with two slashes or backslashes followed by a hostname
 
       if (std::regex_search(path, win_local_drive))
       {
@@ -341,7 +341,7 @@ namespace Filesystem
       else if (std::regex_search(path, win_network_drive))
       {
         // Window network drive, consisting of \\ and hostname
-        size_t const sep_pos = path.find_first_of("/\\", 2);
+        const size_t sep_pos = path.find_first_of("/\\", 2);
         absolute_root = path.substr(0, sep_pos); // If no seperator was found, this will return the entire string
       }
     }

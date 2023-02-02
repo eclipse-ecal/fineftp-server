@@ -13,7 +13,7 @@ namespace fineftp
 
   bool UserDatabase::addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions)
   {
-    std::lock_guard<decltype(database_mutex_)> const database_lock(database_mutex_);
+    const std::lock_guard<decltype(database_mutex_)> database_lock(database_mutex_);
 
     if (isUsernameAnonymousUser(username))
     {
@@ -52,7 +52,7 @@ namespace fineftp
 
   std::shared_ptr<FtpUser> UserDatabase::getUser(const std::string& username, const std::string& password) const
   {
-    std::lock_guard<decltype(database_mutex_)> const database_lock(database_mutex_);
+    const std::lock_guard<decltype(database_mutex_)> database_lock(database_mutex_);
 
     if (isUsernameAnonymousUser(username))
     {
