@@ -58,5 +58,5 @@ Checks: "-*,
   -readability-else-after-return,
 "
 WarningsAsErrors: ''
-HeaderFilterRegex: ''
+HeaderFilterRegex: '^((?!/thirdparty/).)*$'
 FormatStyle:     none

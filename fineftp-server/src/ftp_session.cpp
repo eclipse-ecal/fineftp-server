@@ -143,7 +143,7 @@ namespace fineftp
 
                           std::istream stream (&(me->command_input_stream_));
                           std::string packet_string(length - 2, ' ');
-                          stream.read(&packet_string[0], length - 2);
+                          stream.read(&packet_string[0], length - 2);  // NOLINT(readability-container-data-pointer) Reason: I need a non-const pointer here, As I am directly reading into the buffer, but .data() returns a const pointer. I don't consider a const_cast to be better. Since C++11 this is safe, as strings are stored in contiguous memeory.
 
                           stream.ignore(2); // Remove the "\r\n"
 #ifndef NDEBUG
@@ -865,7 +865,7 @@ namespace fineftp
     auto local_path = toLocalPath(param);
 
 #ifdef WIN32
-    LPSECURITY_ATTRIBUTES security_attributes = NULL; // => Default security attributes
+    LPSECURITY_ATTRIBUTES security_attributes = nullptr; // => Default security attributes
     if (CreateDirectoryW(StrConvert::Utf8ToWide(local_path).c_str(), security_attributes) != 0)
     {
       sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(toAbsoluteFtpPath(param)) + " Successfully created");
@@ -1123,7 +1123,7 @@ namespace fineftp
                                   }
       // TODO: close acceptor after connect?
                                   // Create a Unix-like file list
-                                  std::stringstream stream;
+                                  std::stringstream stream; // NOLINT(misc-const-correctness) Reason: False detection, this cannot be made const
                                   for (const auto& entry : directory_content)
                                   {
                                     const std::string& filename(entry.first);
@@ -1164,7 +1164,7 @@ namespace fineftp
                                   }
 
                                   // Create a file list
-                                  std::stringstream stream;
+                                  std::stringstream stream; // NOLINT(misc-const-correctness) Reason: False detection, this cannot be made const
                                   for (const auto& entry : directory_content)
                                   {
                                     stream << entry.first;
@@ -1492,23 +1492,23 @@ namespace fineftp
   }
 
 #ifdef WIN32
-  std::string FtpSession::GetLastErrorStr() const
+  std::string FtpSession::GetLastErrorStr()
   {
-    DWORD error = GetLastError();
-    if (error)
+    const DWORD error = GetLastError();
+    if (error != 0)
     {
-      LPVOID lp_msg_buf;
-      DWORD buf_len = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-                                    FORMAT_MESSAGE_FROM_SYSTEM |
-                                    FORMAT_MESSAGE_IGNORE_INSERTS,
-                                    NULL,
-                                    error,
-                                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                                    (LPTSTR) &lp_msg_buf,
-                                    0, NULL );
-      if (buf_len)
+      LPVOID lp_msg_buf = nullptr;
+      const DWORD buf_len = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+                                          FORMAT_MESSAGE_FROM_SYSTEM |
+                                          FORMAT_MESSAGE_IGNORE_INSERTS,
+                                          nullptr,
+                                          error,
+                                          MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                          reinterpret_cast<LPTSTR>(&lp_msg_buf),
+                                          0, nullptr );
+      if (buf_len != 0)
       {
-        LPCSTR lp_msg_str = (LPCSTR)lp_msg_buf;
+        LPCSTR lp_msg_str = reinterpret_cast<LPCSTR>(lp_msg_buf);
         std::string result(lp_msg_str, lp_msg_str + buf_len);
         result.erase(std::remove_if(result.begin(),
                                     result.end(),

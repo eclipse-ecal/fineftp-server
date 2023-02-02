@@ -192,7 +192,7 @@ namespace fineftp
      * @brief Returns Windows' GetLastError() as human readable string
      * @return The message of the last error
      */
-    std::string GetLastErrorStr() const;
+    static std::string GetLastErrorStr();
 #endif // WIN32
 
   ////////////////////////////////////////////////////////

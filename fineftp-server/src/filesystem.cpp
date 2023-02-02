@@ -34,7 +34,7 @@ namespace Filesystem
     , file_status_{}
   {
 #ifdef WIN32
-    std::wstring w_path_ = StrConvert::Utf8ToWide(path);
+    const std::wstring w_path_ = StrConvert::Utf8ToWide(path);
     const int error_code = _wstat64(w_path_.c_str(), &file_status_);
 #else // WIN32
     const int error_code = stat(path.c_str(), &file_status_);
@@ -135,12 +135,12 @@ namespace Filesystem
     return permission_string;
   }
 
-  std::string FileStatus::ownerString() const
+  std::string FileStatus::ownerString() const // NOLINT(readability-convert-member-functions-to-static) Reason: I want being able to extend the stub code here and return an actual owner
   {
     return "fineFTP";
   }
 
-  std::string FileStatus::groupString() const
+  std::string FileStatus::groupString() const // NOLINT(readability-convert-member-functions-to-static) Reason: I want being able to extend the stub code here and return an actual group
   {
     return "fineFTP";
   }
@@ -246,9 +246,9 @@ namespace Filesystem
     std::string find_file_path = path_ + "\\*";
     std::replace(find_file_path.begin(), find_file_path.end(), '/', '\\');
 
-    std::wstring w_find_file_path = StrConvert::Utf8ToWide(find_file_path);
+    const std::wstring w_find_file_path = StrConvert::Utf8ToWide(find_file_path);
 
-    HANDLE hFind;
+    HANDLE hFind = nullptr;
     WIN32_FIND_DATAW ffd;
     hFind = FindFirstFileW(w_find_file_path.c_str(), &ffd);
     if (hFind != INVALID_HANDLE_VALUE)
@@ -275,9 +275,9 @@ namespace Filesystem
     std::string find_file_path = path + "\\*";
     std::replace(find_file_path.begin(), find_file_path.end(), '/', '\\');
 
-    std::wstring w_find_file_path = StrConvert::Utf8ToWide(find_file_path);
+    const std::wstring w_find_file_path = StrConvert::Utf8ToWide(find_file_path);
 
-    HANDLE hFind;
+    HANDLE hFind = nullptr;
     WIN32_FIND_DATAW ffd;
     hFind = FindFirstFileW(w_find_file_path.c_str(), &ffd);
     if (hFind == INVALID_HANDLE_VALUE)
@@ -288,7 +288,7 @@ namespace Filesystem
 
     do
     {
-      std::string file_name = StrConvert::WideToUtf8(std::wstring(ffd.cFileName));
+      const std::string file_name = StrConvert::WideToUtf8(std::wstring(ffd.cFileName));
       content.emplace(file_name, FileStatus(path + "\\" + file_name));
     } while (FindNextFileW(hFind, &ffd) != 0);
     FindClose(hFind);

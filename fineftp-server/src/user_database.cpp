@@ -5,10 +5,10 @@
 
 namespace fineftp
 {
-  UserDatabase::UserDatabase()
+  UserDatabase::UserDatabase() // NOLINT(modernize-use-equals-default) Reason: I don't want to change API / ABI and wnat the possibility to implement a non-trivial version that still is ABI compatible
   {}
 
-  UserDatabase::~UserDatabase()
+  UserDatabase::~UserDatabase() // NOLINT(modernize-use-equals-default) Reason: I don't want to change API / ABI and wnat the possibility to implement a non-trivial version that still is ABI compatible
   {}
 
   bool UserDatabase::addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions)
@@ -75,7 +75,7 @@ namespace fineftp
     }
   }
 
-  bool UserDatabase::isUsernameAnonymousUser(const std::string& username) const
+  bool UserDatabase::isUsernameAnonymousUser(const std::string& username) const // NOLINT(readability-convert-member-functions-to-static) Reason: I don't want to break the ABI. Otherwise this is a good finding and should be accepted.
   {
     return (username.empty()
       || username == "ftp"
