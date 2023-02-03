@@ -7,9 +7,9 @@
 int main() {
 
 #ifdef WIN32
-  std::string local_root =  "C:\\"; // The backslash at the end is necessary!
+  const std::string local_root =  "C:\\"; // The backslash at the end is necessary!
 #else // WIN32
-  std::string local_root =  "/";
+  const std::string local_root =  "/";
 #endif // WIN32
 
   // Create an FTP Server on port 2121. We use 2121 instead of the default port

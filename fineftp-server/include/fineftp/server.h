@@ -70,6 +70,15 @@ namespace fineftp
      */
     FINEFTP_EXPORT FtpServer(uint16_t port = 21);
 
+    // Move
+    FINEFTP_EXPORT FtpServer(FtpServer&&) noexcept;
+    FINEFTP_EXPORT FtpServer& operator=(FtpServer&&) noexcept;
+
+    // Non-copyable
+    FtpServer(const FtpServer&)            = delete;
+    FtpServer& operator=(const FtpServer&) = delete;
+
+    // Destructor
     FINEFTP_EXPORT ~FtpServer();
 
     /**
@@ -93,7 +102,7 @@ namespace fineftp
      * 
      * @return True if adding the user was successful (i.e. it didn't exit already).
      */
-    FINEFTP_EXPORT bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions);
+    FINEFTP_EXPORT bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions);
     
     /**
      * @brief Adds the "anonymous" / "ftp" user that FTP clients use to access FTP servers without password
@@ -103,7 +112,7 @@ namespace fineftp
      * 
      * @return True if adding the anonymous user was successful (i.e. it didn't exit already).
      */
-    FINEFTP_EXPORT bool addUserAnonymous(const std::string& local_root_path, const Permission permissions);
+    FINEFTP_EXPORT bool addUserAnonymous(const std::string& local_root_path, Permission permissions);
 
     /**
      * @brief Starts the FTP Server
@@ -147,10 +156,6 @@ namespace fineftp
      * @return The ip address the FTP server is listening for.
      */
     FINEFTP_EXPORT std::string getAddress() const;
-
-    // Non-copyable
-    FINEFTP_EXPORT FtpServer(const FtpServer&) = delete;
-    FINEFTP_EXPORT FtpServer& operator=(const FtpServer&) = delete;
 
   private:
     std::unique_ptr<FtpServerImpl> ftp_server_;        /**< Implementation details */

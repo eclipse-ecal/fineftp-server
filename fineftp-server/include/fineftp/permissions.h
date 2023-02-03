@@ -20,12 +20,12 @@ namespace fineftp
     None     = 0
   };
 
-  inline Permission operator~   (Permission a)                { return (Permission)~(int)a; }
-  inline Permission operator|   (Permission a, Permission b)  { return (Permission)((int)a | (int)b); }
-  inline Permission operator&   (Permission a, Permission b)  { return (Permission)((int)a & (int)b); }
-  inline Permission operator^   (Permission a, Permission b)  { return (Permission)((int)a ^ (int)b); }
-  inline Permission& operator|= (Permission& a, Permission b) { return (Permission&)((int&)a |= (int)b); }
-  inline Permission& operator&= (Permission& a, Permission b) { return (Permission&)((int&)a &= (int)b); }
-  inline Permission& operator^= (Permission& a, Permission b) { return (Permission&)((int&)a ^= (int)b); }
+  inline Permission operator~   (Permission a)                { return static_cast<Permission>(~static_cast<int>(a)); }
+  inline Permission operator|   (Permission a, Permission b)  { return static_cast<Permission>(static_cast<int>(a) | static_cast<int>(b)); }
+  inline Permission operator&   (Permission a, Permission b)  { return static_cast<Permission>(static_cast<int>(a) & static_cast<int>(b)); }
+  inline Permission operator^   (Permission a, Permission b)  { return static_cast<Permission>(static_cast<int>(a) ^ static_cast<int>(b)); }
+  inline Permission& operator|= (Permission& a, Permission b) { return reinterpret_cast<Permission&>(reinterpret_cast<int&>(a) |= static_cast<int>(b)); }
+  inline Permission& operator&= (Permission& a, Permission b) { return reinterpret_cast<Permission&>(reinterpret_cast<int&>(a) &= static_cast<int>(b)); }
+  inline Permission& operator^= (Permission& a, Permission b) { return reinterpret_cast<Permission&>(reinterpret_cast<int&>(a) ^= static_cast<int>(b)); }
 
 }

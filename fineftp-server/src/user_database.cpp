@@ -5,15 +5,9 @@
 
 namespace fineftp
 {
-  UserDatabase::UserDatabase()
-  {}
-
-  UserDatabase::~UserDatabase()
-  {}
-
   bool UserDatabase::addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions)
   {
-    std::lock_guard<decltype(database_mutex_)> database_lock(database_mutex_);
+    const std::lock_guard<decltype(database_mutex_)> database_lock(database_mutex_);
 
     if (isUsernameAnonymousUser(username))
     {
@@ -24,7 +18,7 @@ namespace fineftp
       }
       else
       {
-        anonymous_user_ = std::shared_ptr<FtpUser>(new FtpUser(password, local_root_path, permissions));
+        anonymous_user_ = std::make_shared<FtpUser>(password, local_root_path, permissions);
 #ifndef NDEBUG
         std::cout << "Successfully added anonymous user." << std::endl;
 #endif // !NDEBUG
@@ -36,7 +30,7 @@ namespace fineftp
       auto user_it = database_.find(username);
       if (user_it == database_.end())
       {
-        database_.emplace(username, std::shared_ptr<FtpUser>(new FtpUser(password, local_root_path, permissions)));
+        database_.emplace(username, std::make_shared<FtpUser>(password, local_root_path, permissions));
 #ifndef NDEBUG
         std::cout << "Successfully added user \"" << username << "\"." << std::endl;
 #endif // !NDEBUG
@@ -52,7 +46,7 @@ namespace fineftp
 
   std::shared_ptr<FtpUser> UserDatabase::getUser(const std::string& username, const std::string& password) const
   {
-    std::lock_guard<decltype(database_mutex_)> database_lock(database_mutex_);
+    const std::lock_guard<decltype(database_mutex_)> database_lock(database_mutex_);
 
     if (isUsernameAnonymousUser(username))
     {
@@ -75,7 +69,7 @@ namespace fineftp
     }
   }
 
-  bool UserDatabase::isUsernameAnonymousUser(const std::string& username) const
+  bool UserDatabase::isUsernameAnonymousUser(const std::string& username) const // NOLINT(readability-convert-member-functions-to-static) Reason: I don't want to break the API. Otherwise this is a good finding and should be accepted.
   {
     return (username.empty()
       || username == "ftp"

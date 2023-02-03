@@ -13,8 +13,11 @@ namespace fineftp
     : FtpServer(std::string("0.0.0.0"), port)
   {}
 
-  FtpServer::~FtpServer()
-  {}
+  // Move
+  FtpServer::FtpServer(FtpServer&&) noexcept                = default;
+  FtpServer& FtpServer::operator=(FtpServer&&) noexcept     = default;
+
+  FtpServer::~FtpServer() = default;
 
   bool FtpServer::addUser(const std::string& username, const std::string& password, const std::string& local_root_path, const Permission permissions)
   {

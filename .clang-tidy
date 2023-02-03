@@ -1,0 +1,62 @@
+---
+# Resons why specific warnings have been turned off:
+# 
+#  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+#    This warns about memcpy and wants us to use memcpy_s, which is not available in our gcc setup.
+#
+#  -cppcoreguidelines-pro-type-vararg
+#    This forbids using functions like printf, snprintf etc. We would like to use those either way.
+#
+#  -misc-no-recursion
+#    Recursion with functions can be an elegant way of solving recursive problems
+#
+# These checks have been disabled to keep compatibility with C++14:
+#  -modernize-concat-nested-namespaces
+#  -modernize-use-nodiscard
+#
+
+Checks: "-*,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-narrowing-conversions,
+  
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-narrowing-conversions,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  
+  misc-*,
+  -misc-non-private-member-variables-in-classes,
+  -misc-no-recursion,
+  
+  modernize-*,
+  -modernize-pass-by-value,
+  -modernize-use-trailing-return-type,
+  -modernize-use-auto,
+  -modernize-concat-nested-namespaces,
+  -modernize-return-braced-init-list,
+  -modernize-use-nodiscard,
+  -modernize-avoid-bind,
+  
+  performance-*,
+  
+  readability-*,
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-redundant-access-specifiers,
+  -readability-function-cognitive-complexity,
+  -readability-else-after-return,
+"
+WarningsAsErrors: ''
+HeaderFilterRegex: '^((?!/thirdparty/|/_deps/).)*$'
+FormatStyle:     none
