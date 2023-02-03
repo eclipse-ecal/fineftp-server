@@ -12,9 +12,6 @@ namespace fineftp
   class UserDatabase
   {
   public:
-    UserDatabase();
-    ~UserDatabase();
-
     bool addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions);
 
     std::shared_ptr<FtpUser> getUser(const std::string& username, const std::string& password) const;

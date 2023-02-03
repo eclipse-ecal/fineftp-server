@@ -71,12 +71,12 @@ namespace fineftp
     FINEFTP_EXPORT FtpServer(uint16_t port = 21);
 
     // Move
-    FINEFTP_EXPORT FtpServer(FtpServer&&)                 = default;
-    FINEFTP_EXPORT FtpServer& operator=(FtpServer&&)      = default;
+    FINEFTP_EXPORT FtpServer(FtpServer&&);
+    FINEFTP_EXPORT FtpServer& operator=(FtpServer&&);
 
     // Non-copyable
-    FINEFTP_EXPORT FtpServer(const FtpServer&)            = delete;
-    FINEFTP_EXPORT FtpServer& operator=(const FtpServer&) = delete;
+    FtpServer(const FtpServer&)            = delete;
+    FtpServer& operator=(const FtpServer&) = delete;
 
     // Destructor
     FINEFTP_EXPORT ~FtpServer();
