@@ -14,8 +14,8 @@ namespace fineftp
   {}
 
   // Move
-  FtpServer::FtpServer(FtpServer&&)                 = default;
-  FtpServer& FtpServer::operator=(FtpServer&&)      = default;
+  FtpServer::FtpServer(FtpServer&&) noexcept                = default;
+  FtpServer& FtpServer::operator=(FtpServer&&) noexcept     = default;
 
   FtpServer::~FtpServer() = default;
 
