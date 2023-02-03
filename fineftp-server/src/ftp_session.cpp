@@ -290,12 +290,12 @@ namespace fineftp
   void FtpSession::handleFtpCommandACCT(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
- }
+  }
 
   void FtpSession::handleFtpCommandCWD(const std::string& param)
   {
       sendFtpMessage(executeCWD(param));
- }
+  }
 
   void FtpSession::handleFtpCommandCDUP(const std::string& /*param*/)
   {
@@ -336,20 +336,20 @@ namespace fineftp
   void FtpSession::handleFtpCommandREIN(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Unsupported command");
- }
+  }
 
   void FtpSession::handleFtpCommandQUIT(const std::string& /*param*/)
   {
     logged_in_user_ = nullptr;
     sendFtpMessage(FtpReplyCode::SERVICE_CLOSING_CONTROL_CONNECTION, "Connection shutting down");
- }
+  }
 
   // Transfer parameter commands
 
   void FtpSession::handleFtpCommandPORT(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "FTP active mode is not supported by this server");
- }
+  }
 
   void FtpSession::handleFtpCommandPASV(const std::string& /*param*/)
   {
@@ -416,7 +416,7 @@ namespace fineftp
     stream << ((port >> 8) & 0xff) << "," << (port & 0xff) << ")";
 
     sendFtpMessage(FtpReplyCode::ENTERING_PASSIVE_MODE, "Entering passive mode " + stream.str());
- }
+  }
 
   void FtpSession::handleFtpCommandTYPE(const std::string& param)
   {
@@ -451,12 +451,12 @@ namespace fineftp
   void FtpSession::handleFtpCommandSTRU(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
- }
+  }
 
   void FtpSession::handleFtpCommandMODE(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unsupported command");
- }
+  }
 
   // Ftp service commands
   void FtpSession::handleFtpCommandRETR(const std::string& param)
@@ -490,7 +490,7 @@ namespace fineftp
 
     sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending file");
     sendFile(file);
- }
+  }
 
   void FtpSession::handleFtpCommandSIZE(const std::string& param)
   {
@@ -590,12 +590,12 @@ namespace fineftp
 
     sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
     receiveFile(file);
- }
+  }
 
   void FtpSession::handleFtpCommandSTOU(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
- }
+  }
 
   void FtpSession::handleFtpCommandAPPE(const std::string& param)
   {
@@ -636,17 +636,17 @@ namespace fineftp
 
     sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Receiving file");
     receiveFile(file);
- }
+  }
 
   void FtpSession::handleFtpCommandALLO(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
- }
+  }
 
   void FtpSession::handleFtpCommandREST(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
- }
+  }
 
   void FtpSession::handleFtpCommandRNFR(const std::string& param)
   {
@@ -743,7 +743,7 @@ namespace fineftp
   void FtpSession::handleFtpCommandABOR(const std::string& /*param*/)
   {
     sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED, "Command not implemented");
- }
+  }
 
   void FtpSession::handleFtpCommandDELE(const std::string& param)
   {
@@ -907,7 +907,7 @@ namespace fineftp
     }
 
     sendFtpMessage(FtpReplyCode::PATHNAME_CREATED, createQuotedFtpPath(ftp_working_directory_));
- }
+  }
 
   void FtpSession::handleFtpCommandLIST(const std::string& param)
   {
@@ -1232,7 +1232,7 @@ namespace fineftp
   {
     data_buffer_strand_.post([me = shared_from_this(), data, data_socket, fetch_more]()
                             {
-                              const bool  write_in_progress = (!me->data_buffer_.empty());
+                              const bool write_in_progress = (!me->data_buffer_.empty());
 
                               me->data_buffer_.push_back(data);
 
