@@ -38,6 +38,13 @@ set(sources
     src/win_str_convert.h
 )
 
+if (WIN32)
+    list(APPEND sources src/win32/file_man.cpp)
+    set(platform_include src/win32)
+else()
+    list(APPEND sources src/unix/file_man.cpp)
+    set(platform_include src/unix)
+endif()
 
 add_library (${PROJECT_NAME}
     ${includes}
@@ -92,6 +99,7 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:include>
   PRIVATE
     src/
+    ${platform_include}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
