@@ -88,16 +88,16 @@ namespace fineftp
 #endif // NDEBUG
 
     acceptor_.async_accept(ftp_session->getSocket()
-                          , [=](auto ec)
+                          , [this, ftp_session](auto ec)
                           {
                             open_connection_count_++;
 
-                            this->acceptFtpSession(ftp_session, ec);
+                            acceptFtpSession(ftp_session, ec);
                           });
 
     for (size_t i = 0; i < thread_count; i++)
     {
-      thread_pool_.emplace_back([=] {io_service_.run(); });
+      thread_pool_.emplace_back([this] {io_service_.run(); });
     }
     
     return true;
@@ -132,10 +132,10 @@ namespace fineftp
     auto new_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
 
     acceptor_.async_accept(new_session->getSocket()
-                          , [=](auto ec)
+                          , [this, new_session](auto ec)
                           {
                             open_connection_count_++;
-                            this->acceptFtpSession(new_session, ec);
+                            acceptFtpSession(new_session, ec);
                           });
   }
 
