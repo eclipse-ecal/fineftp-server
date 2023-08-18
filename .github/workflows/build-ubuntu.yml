@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         library_type: [static, shared]
-        os: [ubuntu-22.04, ubuntu-20.04, ubuntu-18.04]
+        os: [ubuntu-22.04, ubuntu-20.04]
 
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
@@ -34,35 +34,7 @@ jobs:
           echo "build_shared_libs=ON"   >> "$GITHUB_ENV"
           echo "package_postfix=shared" >> "$GITHUB_ENV"
         fi
-
-    - name: Getting closer to vanilla Ubuntu 18.04
-      run: |
-        if [[ '${{ matrix.os }}' == 'ubuntu-18.04' ]]; then
-
-          sudo apt-get -y update
         
-          echo "Creating directory for libgcc1"
-          mkdir libgcc1_deb
-          cd libgcc1_deb
-          pwd
-        
-          echo "Downloading bionic-security libgcc1"
-          apt-get download -t bionic-security libgcc1
-        
-          echo "Purging GH Actions toolchain PPA"
-          sudo apt-get -y install ppa-purge
-          sudo ppa-purge -y ubuntu-toolchain-r/test
-        
-          echo "installing libgcc1_deb"
-          sudo dpkg -i *
-        
-          echo "Installing g++"
-          sudo apt-get -y install g++
-        
-          cd ..
-        fi
-      shell: bash
-
     - name: Checkout
       uses: actions/checkout@v3
       with:
