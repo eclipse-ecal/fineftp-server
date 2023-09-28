@@ -14,6 +14,9 @@ message(STATUS "Prefix Path: ${CMAKE_PREFIX_PATH}")
 option(FINEFTP_SERVER_BUILD_SAMPLES
        "Build project samples"
        ON)
+option(FINEFTP_SERVER_BUILD_TESTS
+       "Build the GoogleTest submodule and the fineftp-server tests"
+       OFF)
 
 # Module path for finding asio
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -28,6 +31,11 @@ add_subdirectory(fineftp-server)
 
 if (FINEFTP_SERVER_BUILD_SAMPLES)
     add_subdirectory(samples/fineftp_example)
+endif()
+
+if (FINEFTP_SERVER_BUILD_TESTS)
+    include("thirdparty/build-gtest.cmake")
+    add_subdirectory(tests/fineftp_test)
 endif()
 
 # Make this package available for packing with CPack
