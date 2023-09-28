@@ -59,7 +59,7 @@ jobs:
                  -G "Visual Studio 16 2019" ^
                  -A ${{ matrix.build_arch }} ^
                  -T ${{ env.VS_TOOLSET }} ^
-                 -FINEFTP_SERVER_BUILD_TESTS=ON ^
+                 -DFINEFTP_SERVER_BUILD_TESTS=ON ^
                  -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ^
                  -DBUILD_SHARED_LIBS=${{ env.build_shared_libs }}
 
