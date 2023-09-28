@@ -7,6 +7,7 @@ ipch
 *.user
 *.opendb
 *.db
+*.vscode
 /_build
 /samples/integration_test/_build
 /_install
