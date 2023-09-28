@@ -34,8 +34,8 @@ if (FINEFTP_SERVER_BUILD_SAMPLES)
 endif()
 
 if (FINEFTP_SERVER_BUILD_TESTS)
-    include("thirdparty/build-gtest.cmake")
-    add_subdirectory(tests/fineftp_test)
+    include("${CMAKE_CURRENT_LIST_DIR}/thirdparty/build-gtest.cmake")
+    add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/tests/fineftp_test")
 endif()
 
 # Make this package available for packing with CPack
