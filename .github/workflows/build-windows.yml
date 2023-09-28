@@ -77,7 +77,7 @@ jobs:
 
     - name: Run Tests
       run: ctest -C Release -V
-      working-directory: ${{ runner.workspace }}/_build
+      working-directory: ${{ github.workspace }}/_build
            
     - name: Read Project Version from CMakeCache
       run: |
