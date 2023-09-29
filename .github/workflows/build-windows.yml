@@ -32,13 +32,11 @@ jobs:
         if ( '${{ matrix.library_type }}' -eq 'static' )
         {
           echo "build_shared_libs=OFF"  >> "$Env:GITHUB_ENV"
-          echo "fineftp_server_build_tests=ON"  >> "$Env:GITHUB_ENV"
           echo "package_postfix=static" >> "$Env:GITHUB_ENV"
         }
         else
         {
           echo "build_shared_libs=ON"   >> "$Env:GITHUB_ENV"
-          echo "fineftp_server_build_tests=OFF"  >> "$Env:GITHUB_ENV"
           echo "package_postfix=shared" >> "$Env:GITHUB_ENV"
         }
 
@@ -61,7 +59,6 @@ jobs:
                  -G "Visual Studio 16 2019" ^
                  -A ${{ matrix.build_arch }} ^
                  -T ${{ env.VS_TOOLSET }} ^
-                 -DFINEFTP_SERVER_BUILD_TESTS=${{env.fineftp_server_build_tests}} ^
                  -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ^
                  -DBUILD_SHARED_LIBS=${{ env.build_shared_libs }}
 
@@ -80,7 +77,6 @@ jobs:
     - name: Run Tests
       run: ctest -C Release -V
       working-directory: ${{ github.workspace }}/_build
-      if: matrix.library_type == 'static'
            
     - name: Read Project Version from CMakeCache
       run: |

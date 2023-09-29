@@ -26,6 +26,13 @@ set(CMAKE_DEBUG_POSTFIX            d)
 set(CMAKE_MINSIZEREL_POSTFIX       minsize)
 set(CMAKE_RELWITHDEBINFO_POSTFIX   reldbg)
 
+# For tests we need to make sure that all shared libraries and executables are 
+# put into the same directory. Otherwise the tests will fail on windows.
+if(FINEFTP_SERVER_BUILD_TESTS AND BUILD_SHARED_LIBS)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+endif()
+
+
 # Add main fineftp::server library
 add_subdirectory(fineftp-server)
 
