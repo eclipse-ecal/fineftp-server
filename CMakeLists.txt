@@ -42,6 +42,7 @@ endif()
 
 if (FINEFTP_SERVER_BUILD_TESTS)
     include("${CMAKE_CURRENT_LIST_DIR}/thirdparty/build-gtest.cmake")
+    enable_testing()
     add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/tests/fineftp_test")
 endif()
 
