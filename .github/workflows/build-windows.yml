@@ -9,8 +9,8 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   INSTALL_PREFIX: _install
   PROJECT_NAME:   fineftp-server
-  VS_TOOLSET:     v140
-  VS_NAME:        vs2015
+  VS_TOOLSET:     v141
+  VS_NAME:        vs2017
 
 jobs:
   build-windows:

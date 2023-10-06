@@ -15,7 +15,7 @@ option(FINEFTP_SERVER_BUILD_SAMPLES
        "Build project samples"
        ON)
 option(FINEFTP_SERVER_BUILD_TESTS
-       "Build the GoogleTest submodule and the fineftp-server tests"
+       "Build the GoogleTest submodule and the fineftp-server tests. Requires C++17. For executing the tests, curl must be available from the PATH."
        OFF)
 
 # Module path for finding asio
