@@ -12,7 +12,7 @@ message(STATUS "Prefix Path: ${CMAKE_PREFIX_PATH}")
 
 # CMake Options
 option(FINEFTP_SERVER_BUILD_SAMPLES
-       "Build project samples"
+       "Build project samples."
        ON)
 option(FINEFTP_SERVER_BUILD_TESTS
        "Build the GoogleTest submodule and the fineftp-server tests. Requires C++17. For executing the tests, curl must be available from the PATH."
