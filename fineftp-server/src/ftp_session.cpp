@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <file_man.h>
 
 #include "filesystem.h"
 
@@ -480,10 +481,9 @@ namespace fineftp
 
     const std::string local_path = toLocalPath(param);
     
-    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
-    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
+    const auto file = ReadableFile::get(local_path);
 
-    if (!file->file_stream_.good())
+    if (!file)
     {
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
       return;
@@ -581,7 +581,7 @@ namespace fineftp
     }
 
     const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::binary) : (std::ios::out));    
-    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
+    const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(local_path, open_mode);
 
     if (!file->file_stream_.good())
     {
@@ -627,7 +627,7 @@ namespace fineftp
     }
 
     const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::app | std::ios::binary) : (std::ios::out | std::ios::app));
-    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
+    const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(local_path, open_mode);
 
     if (!file->file_stream_.good())
     {
@@ -1184,7 +1184,7 @@ namespace fineftp
                                 });
   }
 
-  void FtpSession::sendFile(const std::shared_ptr<IoFile>& file)
+  void FtpSession::sendFile(const std::shared_ptr<ReadableFile>& file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
     data_socket_weakptr_ = data_socket;
@@ -1198,35 +1198,28 @@ namespace fineftp
                                     return;
                                   }
 
-                                  // Start sending multiple buffers at once
-                                  me->readDataFromFileAndSend(file, data_socket);
-                                  me->readDataFromFileAndSend(file, data_socket);
-                                  me->readDataFromFileAndSend(file, data_socket);
+                                  if (file->size() == 0u)
+                                  {
+                                    me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                                  }
+                                  else
+                                  {
+                                    // Send the file
+                                    asio::async_write(*data_socket
+                                                    , asio::buffer(file->data(), file->size())
+                                                    , me->data_buffer_strand_.wrap([me, file, data_socket](asio::error_code ec, std::size_t /*bytes_to_transfer*/)
+                                                      {
+                                                        if (ec)
+                                                        {
+                                                          me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                                        }
+                                                        else
+                                                        {
+                                                          me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                                                        }
+                                                      }));
+                                  }
                                 });
-
-  }
-
-  void FtpSession::readDataFromFileAndSend(const std::shared_ptr<IoFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
-  {
-    file_rw_strand_.post([me = shared_from_this(), file, data_socket]()
-                        {
-                          if(file->file_stream_.eof()) return;
-
-                          const std::shared_ptr<std::vector<char>> buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
-                          file->file_stream_.read(buffer->data(), static_cast<std::streamsize>(buffer->size()));
-                          auto bytes_read = file->file_stream_.gcount();
-                          buffer->resize(static_cast<size_t>(bytes_read));
-
-                          if (!file->file_stream_.eof())
-                          {
-                            me->addDataToBufferAndSend(buffer, data_socket, [me, file, data_socket]() {me->readDataFromFileAndSend(file, data_socket); });
-                          }
-                          else
-                          {
-                            me->addDataToBufferAndSend(buffer, data_socket);
-                            me->addDataToBufferAndSend(std::shared_ptr<std::vector<char>>(nullptr), data_socket);
-                          }
-                        });
   }
 
   void FtpSession::addDataToBufferAndSend(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<asio::ip::tcp::socket>& data_socket, const std::function<void(void)>& fetch_more)
@@ -1289,7 +1282,7 @@ namespace fineftp
   // FTP data-socket receive
   ////////////////////////////////////////////////////////
 
-  void FtpSession::receiveFile(const std::shared_ptr<IoFile>& file)
+  void FtpSession::receiveFile(const std::shared_ptr<WriteableFile>& file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
     data_socket_weakptr_ = data_socket;
@@ -1307,7 +1300,7 @@ namespace fineftp
                                 });
   }
 
-  void FtpSession::receiveDataFromSocketAndWriteToFile(const std::shared_ptr<IoFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+  void FtpSession::receiveDataFromSocketAndWriteToFile(const std::shared_ptr<WriteableFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
     const std::shared_ptr<std::vector<char>> buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
       
@@ -1334,7 +1327,7 @@ namespace fineftp
   }
 
 
-  void FtpSession::writeDataToFile(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<IoFile>& file, const std::function<void(void)>& fetch_more)
+  void FtpSession::writeDataToFile(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<WriteableFile>& file, const std::function<void(void)>& fetch_more)
   {
     file_rw_strand_.post([me = shared_from_this(), data, file, fetch_more]
                         {
@@ -1343,7 +1336,7 @@ namespace fineftp
                         });
   }
 
-  void FtpSession::endDataReceiving(const std::shared_ptr<IoFile>& file)
+  void FtpSession::endDataReceiving(const std::shared_ptr<WriteableFile>& file)
   {
     file_rw_strand_.post([me = shared_from_this(), file]
                         {

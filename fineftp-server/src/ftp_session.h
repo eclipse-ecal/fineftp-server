@@ -15,13 +15,15 @@
 
 namespace fineftp
 {
+  class ReadableFile;
+
   class FtpSession
     : public std::enable_shared_from_this<FtpSession>
   {
   private:
-    struct IoFile
+    struct WriteableFile
     {
-      IoFile(const std::string& filename, std::ios::openmode mode)
+      WriteableFile(const std::string& filename, std::ios::openmode mode)
 #if defined(WIN32) && !defined(__GNUG__)
         : file_stream_(StrConvert::Utf8ToWide(filename), mode)
 #else
@@ -33,14 +35,14 @@ namespace fineftp
       }
 
       // Copy
-      IoFile(const IoFile&)            = delete;
-      IoFile& operator=(const IoFile&) = delete;
+      WriteableFile(const WriteableFile&)            = delete;
+      WriteableFile& operator=(const WriteableFile&) = delete;
 
       // Move disabled (as we are storing the shared_from_this() pointer in lambda captures)
-      IoFile& operator=(IoFile&&)      = delete;
-      IoFile(IoFile&&)                 = delete;
+      WriteableFile& operator=(WriteableFile&&)      = delete;
+      WriteableFile(WriteableFile&&)                 = delete;
 
-      ~IoFile()
+      ~WriteableFile()
       {
         file_stream_.flush();
         file_stream_.close();
@@ -138,10 +140,7 @@ namespace fineftp
     void sendDirectoryListing   (const std::map<std::string, Filesystem::FileStatus>& directory_content);
     void sendNameList           (const std::map<std::string, Filesystem::FileStatus>& directory_content);
 
-    void sendFile               (const std::shared_ptr<IoFile>&                file);
-
-    void readDataFromFileAndSend(const std::shared_ptr<IoFile>&                file
-                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
+    void sendFile               (const std::shared_ptr<ReadableFile>&          file);
 
     void addDataToBufferAndSend (const std::shared_ptr<std::vector<char>>&     data
                                , const std::shared_ptr<asio::ip::tcp::socket>& data_socket
@@ -154,16 +153,16 @@ namespace fineftp
   // FTP data-socket receive
   ////////////////////////////////////////////////////////
   private:
-    void receiveFile(const std::shared_ptr<IoFile>& file);
+    void receiveFile(const std::shared_ptr<WriteableFile>& file);
 
-    void receiveDataFromSocketAndWriteToFile(const std::shared_ptr<IoFile>&                file
+    void receiveDataFromSocketAndWriteToFile(const std::shared_ptr<WriteableFile>&         file
                                            , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
     void writeDataToFile(const std::shared_ptr<std::vector<char>>& data
-                       , const std::shared_ptr<IoFile>&            file
+                       , const std::shared_ptr<WriteableFile>&     file
                        , const std::function<void(void)>&          fetch_more = []() {return; });
 
-    void endDataReceiving(const std::shared_ptr<IoFile>& file);
+    void endDataReceiving(const std::shared_ptr<WriteableFile>& file);
 
   ////////////////////////////////////////////////////////
   // Helpers
