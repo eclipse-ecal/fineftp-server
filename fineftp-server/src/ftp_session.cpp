@@ -481,7 +481,11 @@ namespace fineftp
 
     const std::string local_path = toLocalPath(param);
     
+#if defined(WIN32) && !defined(__GNUG__)
+    const auto file = ReadableFile::get(StrConvert::Utf8ToWide(local_path));
+#else
     const auto file = ReadableFile::get(local_path);
+#endif
 
     if (!file)
     {

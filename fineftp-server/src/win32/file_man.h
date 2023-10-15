@@ -24,12 +24,18 @@ public:
   ReadableFile& operator=(ReadableFile&&)      = delete;
   ~ReadableFile();
 
+#if defined(WIN32) && !defined(__GNUG__)
+  using Str = std::wstring;
+#else
+  using Str = std::string;
+#endif
+
   /// Retrieves the file at the specified path.
   ///
   /// @param pth      The path of the file.
   ///
   /// @param The requested file or nullptr if the file could not be retrieved.
-  static std::shared_ptr<ReadableFile> get(const std::string& pth);
+  static std::shared_ptr<ReadableFile> get(const Str& pth);
 
   /// Returns the size of the file.
   ///
@@ -44,12 +50,12 @@ public:
   /// Returns the path of the file.
   ///
   /// @return The path of the file.
-  const std::string& path() const;
+  const Str& path() const;
 
 private:
   ReadableFile() = default;
 
-  std::string   pth_        = {};
+  Str           pth_        = {};
   std::size_t   size_       = {};
   std::uint8_t* data_       = {};
   HANDLE        handle_     = INVALID_HANDLE_VALUE;
@@ -66,7 +72,7 @@ inline const std::uint8_t* ReadableFile::data() const
   return data_;
 }
 
-inline const std::string& ReadableFile::path() const
+inline const ReadableFile::Str& ReadableFile::path() const
 {
   return pth_;
 }
