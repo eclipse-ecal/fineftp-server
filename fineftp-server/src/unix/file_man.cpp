@@ -36,12 +36,6 @@ ReadableFile::~ReadableFile()
 
 std::shared_ptr<ReadableFile> ReadableFile::get(const std::string& pth)
 {
-  // Prevent use of relative paths as they are a security problem
-  if (pth.size() == 0 || pth[0] == '/' || std::string::npos != pth.find("../"))
-  {
-    return {};
-  }
-
   // See if we already have this file mapped
   std::lock_guard<std::mutex> lock{guard};
   auto                        fit = files.find(pth);

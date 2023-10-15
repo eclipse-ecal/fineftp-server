@@ -47,12 +47,7 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const std::string& pth)
     }
   }
 
-  // Prevent use of relative paths as they are a security problem
   auto&& s = os.str();
-  if (s.size() == 0 || s[0] == '/' || std::string::npos != s.find("../"))
-  {
-    return {};
-  }
 
   // See if we already have this file mapped
   std::lock_guard<std::mutex> lock{guard};
