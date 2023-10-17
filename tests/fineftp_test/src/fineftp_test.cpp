@@ -434,3 +434,68 @@ TEST(FineFTPTest, UTF8Paths)
   }
 }
 #endif
+
+#if 1
+TEST(FineFTPTest, PathVulnerability)
+{
+  auto test_working_dir = std::filesystem::current_path();
+  auto ftp_toplevel_dir = test_working_dir / "ftp_toplevel_dir";
+  auto ftp_root_dir     = ftp_toplevel_dir / "ftp_root";
+  auto local_root_dir   = test_working_dir / "local_root";
+
+  // Create local root and ftp dir
+  {
+    if (std::filesystem::exists(ftp_toplevel_dir))
+      std::filesystem::remove_all(ftp_toplevel_dir);
+    
+    if (std::filesystem::exists(local_root_dir))
+      std::filesystem::remove_all(local_root_dir);
+    
+    // Make sure that we start clean, so no old dir exists
+    ASSERT_FALSE(std::filesystem::exists(ftp_toplevel_dir));
+    ASSERT_FALSE(std::filesystem::exists(local_root_dir));
+    
+    // Create dirs
+    std::filesystem::create_directory(ftp_toplevel_dir);
+    std::filesystem::create_directory(ftp_root_dir);
+    std::filesystem::create_directory(local_root_dir);
+    
+    // Make sure all dirs exist
+    ASSERT_TRUE(std::filesystem::is_directory(ftp_toplevel_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(ftp_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(local_root_dir));
+  }
+
+  // Start the server
+  fineftp::FtpServer server(2121);
+  server.start(4);
+
+  server.addUserAnonymous(ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Create a small hello world file in the ftp_toplevel_dir
+  {
+    auto local_file_path = ftp_toplevel_dir / "hello_world.txt";
+    std::ofstream ofs(local_file_path.string());
+    ofs << "Hello World";
+    ofs.close();
+        
+    // Make sure that the file exists
+    ASSERT_TRUE(std::filesystem::exists(local_file_path));
+    ASSERT_TRUE(std::filesystem::is_regular_file(local_file_path));
+  }
+
+  // Retrieve size of the file with curl (Absolute root, relative path). The file should not be accessible
+  {
+    std::string curl_command = "curl \"ftp://localhost:2121/\" -Q \"SIZE /../hello_world.txt\"";
+    auto curl_result = std::system(curl_command.c_str());
+    ASSERT_NE(curl_result, 0);
+  }
+
+  // Retrieve size of the file with curl (Pure relative path). The file should not be accessible
+  {
+    std::string curl_command = "curl \"ftp://localhost:2121/\" -Q \"SIZE ../hello_world.txt\"";
+    auto curl_result = std::system(curl_command.c_str());
+    ASSERT_NE(curl_result, 0);
+  }
+}
+#endif
