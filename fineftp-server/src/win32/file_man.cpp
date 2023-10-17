@@ -11,8 +11,8 @@ namespace fineftp
 
 namespace {
 
-std::mutex                                         guard;
-std::map<std::string, std::weak_ptr<ReadableFile>> files;
+std::mutex                                               guard;
+std::map<ReadableFile::Str, std::weak_ptr<ReadableFile>> files;
 
 }  // namespace
 
@@ -32,9 +32,9 @@ ReadableFile::~ReadableFile()
   }
 }
 
-std::shared_ptr<ReadableFile> ReadableFile::get(const std::string& pth)
+std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
 {
-  std::ostringstream os;
+  std::basic_ostringstream<Str::value_type> os;
   for (auto c : pth)
   {
     if (c == '/')
@@ -47,12 +47,7 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const std::string& pth)
     }
   }
 
-  // Prevent use of relative paths as they are a security problem
   auto&& s = os.str();
-  if (s.size() == 0 || s[0] == '/' || std::string::npos != s.find("../"))
-  {
-    return {};
-  }
 
   // See if we already have this file mapped
   std::lock_guard<std::mutex> lock{guard};
@@ -66,8 +61,13 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const std::string& pth)
     }
   }
 
+#if defined(WIN32) && !defined(__GNUG__)
+  auto handle =
+    ::CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+#else
   auto handle =
     ::CreateFileA(s.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+#endif
   if (INVALID_HANDLE_VALUE == handle)
   {
     return {};
