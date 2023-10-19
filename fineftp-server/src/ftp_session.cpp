@@ -1318,9 +1318,12 @@ namespace fineftp
                         {
                           if (length > 0)
                           {
-                            me->writeDataToFile(buffer, file);
+                            me->writeDataToFile(buffer, file, [me, file]() { me->endDataReceiving(file); });
                           }
-                          me->endDataReceiving(file);
+                          else
+                          {
+                            me->endDataReceiving(file);
+                          }
                           return;
                         }
                         else if (length > 0)
@@ -1335,8 +1338,8 @@ namespace fineftp
   {
     file_rw_strand_.post([me = shared_from_this(), data, file, fetch_more]
                         {
-                          fetch_more();
                           file->file_stream_.write(data->data(), static_cast<std::streamsize>(data->size()));
+                          fetch_more();
                         });
   }
 
