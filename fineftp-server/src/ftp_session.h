@@ -44,12 +44,26 @@ namespace fineftp
 
       ~WriteableFile()
       {
-        file_stream_.flush();
-        file_stream_.close();
+        if (!closed)
+        {
+          file_stream_.flush();
+          file_stream_.close();
+        }
+      }
+
+      void close()
+      {
+        if (!closed)
+        {
+          closed = true;
+          file_stream_.flush();
+          file_stream_.close();
+        }
       }
 
       std::fstream      file_stream_;
       std::vector<char> stream_buffer_;
+      bool              closed{};
     };
 
   ////////////////////////////////////////////////////////

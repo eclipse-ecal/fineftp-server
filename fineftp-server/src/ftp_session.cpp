@@ -1344,8 +1344,7 @@ namespace fineftp
   {
     file_rw_strand_.post([me = shared_from_this(), file]
                         {
-                          file->file_stream_.flush();
-                          file->file_stream_.close();
+                          file->close();
                           me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                         });
   }
