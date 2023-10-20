@@ -40,6 +40,25 @@ namespace fineftp
 #ifndef NDEBUG
     std::cout << "Ftp Session shutting down" << std::endl;
 #endif // !NDEBUG
+
+    {
+      // Properly close command socket
+      // TODO: Protect command socket with a mutex, as it may be accessed by multiple threads
+      asio::error_code ec;
+      command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+      command_socket_.close(ec);
+    }
+
+    auto data_socket = data_socket_weakptr_.lock();
+    if (data_socket)
+    {
+      // Properly close data socket
+      // TODO: Protect data socket with a mutex, as it may be accessed by multiple threads
+      asio::error_code ec;
+      data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+      data_socket->close(ec);
+    }
+
     completion_handler_();
   }
 
@@ -231,7 +250,14 @@ namespace fineftp
     if (last_command_ == "QUIT")
     {
       // Close command socket
-      command_write_strand_.wrap([me = shared_from_this()]() { me->command_socket_.close();  });
+      command_write_strand_.wrap([me = shared_from_this()]()
+                                  {
+                                    // Properly close command socket
+                                    // TODO: Protect command socket with a mutex, as it may be accessed by multiple threads
+                                    asio::error_code ec;
+                                    me->command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+                                    me->command_socket_.close(ec);
+                                  });
     }
     else
     {
@@ -1276,6 +1302,15 @@ namespace fineftp
                       {
                         // we got to the end of transmission
                         me->data_buffer_.pop_front();
+
+                        // Close Data Socket properly
+                        // TODO: Protect data socket with mutex, as it may be accessed from multiple threads
+                        {
+                          asio::error_code ec;
+                          data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+                          data_socket->close(ec);
+                        }
+
                         me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                       }
                     }

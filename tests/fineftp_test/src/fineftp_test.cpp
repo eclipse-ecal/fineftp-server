@@ -53,7 +53,7 @@ TEST(FineFTPTest, SimpleUploadDownload) {
 
   // Upload the file to the FTP server using curl
   {
-    std::string curl_command = "curl -T \"" + local_file.string() + "\" \"ftp://localhost:2121/\"";
+    std::string curl_command = "curl -S -s -T \"" + local_file.string() + "\" \"ftp://localhost:2121/\"";
     auto curl_result = std::system(curl_command.c_str());
 
     // Make sure that the upload was successful
@@ -73,7 +73,7 @@ TEST(FineFTPTest, SimpleUploadDownload) {
 
   // Download the file again
   {
-    std::string curl_command_download = "curl -o \"" + local_root_dir.string() + "/hello_world_download.txt\" \"ftp://localhost:2121/hello_world.txt\"";
+    std::string curl_command_download = "curl -S -s -o \"" + local_root_dir.string() + "/hello_world_download.txt\" \"ftp://localhost:2121/hello_world.txt\"";
     std::system(curl_command_download.c_str());
 
     // Make sure that the files are identical
@@ -158,7 +158,7 @@ TEST(FineFTPTest, BigFilesMultipleClients)
     for (int i = 0; i < num_clients; i++)
     {
       threads.emplace_back([&, i]() {
-                            std::string curl_command = "curl -T \"" + (upload_dir / "big_file").string() + "\" \"ftp://localhost:2121/" + std::to_string(i) + "/\" --ftp-create-dirs";
+                            std::string curl_command = "curl -S -s -T \"" + (upload_dir / "big_file").string() + "\" \"ftp://localhost:2121/" + std::to_string(i) + "/\" --ftp-create-dirs";
                             auto curl_result = std::system(curl_command.c_str());
                             ASSERT_EQ(curl_result, 0);
                           });
@@ -183,7 +183,7 @@ TEST(FineFTPTest, BigFilesMultipleClients)
     for (int i = 0; i < num_clients; i++)
     {
       threads.emplace_back([&, i]() {
-                            std::string curl_command_download = "curl -o \"" + (download_dir / ("big_file_download_" + std::to_string(i))).string() + "\" \"ftp://localhost:2121/" + std::to_string(i) + "/big_file\"";
+                            std::string curl_command_download = "curl -S -s -o \"" + (download_dir / ("big_file_download_" + std::to_string(i))).string() + "\" \"ftp://localhost:2121/" + std::to_string(i) + "/big_file\"";
                             auto curl_result = std::system(curl_command_download.c_str());
                             ASSERT_EQ(curl_result, 0);
                           });
@@ -219,6 +219,106 @@ TEST(FineFTPTest, BigFilesMultipleClients)
 
   // Stop the server
   server.stop();
+}
+#endif
+
+#if 1
+// Curl will call LIST, RNFR and RNTO to the server with parallel sessions
+TEST(FineFTPTest, ListAndRename)
+{
+  constexpr int num_clients          = 10;
+  constexpr int num_files_per_client = 10;
+
+  auto test_working_dir = std::filesystem::current_path();
+  auto ftp_root_dir     = test_working_dir / "ftp_root";
+
+  // Create ftp root dir
+  {
+    if (std::filesystem::exists(ftp_root_dir))
+          std::filesystem::remove_all(ftp_root_dir);
+
+    // Make sure that we start clean, so no old dir exists
+    ASSERT_FALSE(std::filesystem::exists(ftp_root_dir));
+
+    // Create dirs
+    std::filesystem::create_directory(ftp_root_dir);
+
+    // Make sure all dirs exist
+    ASSERT_TRUE(std::filesystem::is_directory(ftp_root_dir));
+  }
+
+  // Fill the ftp root dir with files
+  {
+    for (int i = 0; i < num_clients; i++)
+    {
+      for (int j = 0; j < num_files_per_client; j++)
+      {
+        auto upload_target_filename = std::to_string(i) + "_" + std::to_string(j) + ".txt";
+        auto upload_target_file     = ftp_root_dir / upload_target_filename;
+
+        std::ofstream ofs(upload_target_file.string());
+        ofs << "Hello World";
+        ofs.close();
+
+        // Make sure that the file exists
+        ASSERT_TRUE(std::filesystem::exists(upload_target_file));
+        ASSERT_TRUE(std::filesystem::is_regular_file(upload_target_file));
+      }
+    }
+  }
+
+  // Start the server
+  fineftp::FtpServer server(2121);
+  server.start(10);
+
+  server.addUserAnonymous(ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Rename the files with parallel curl sessions
+  {
+    std::vector<std::thread> threads;
+    threads.reserve(num_clients);
+    for (int i = 0; i < num_clients; i++)
+    {
+      threads.emplace_back([&, i]() {
+                            for (int j = 0; j < num_files_per_client; j++)
+                            {
+                              // Create target filename having the client and upload index in the name
+                              auto upload_target_filename = std::to_string(i) + "_" + std::to_string(j) + ".txt";
+                              auto rename_target_filename = std::to_string(i) + "_" + std::to_string(j) + "_renamed.txt";
+
+#ifdef WIN32
+                              std::string curl_output_file = "NUL";
+#else // WIN32
+                              std::string curl_output_file = "/dev/null";
+#endif // WIN32
+
+                              std::string curl_command = "curl -Q \"RNFR " + upload_target_filename + "\" "
+                                                              + " -Q \"RNTO " + rename_target_filename + "\" "
+                                                              + " -S -s "
+                                                              + " -o " + curl_output_file + " "
+                                                              +" \"ftp://localhost:2121/\"";
+
+                              auto curl_result = std::system(curl_command.c_str());
+                              //if (curl_result != 0)
+                              //{
+                              //  std::cerr << "Curl Command LIST + RNFR" << upload_target_filename << " + RNTO " << rename_target_filename << "Failed" << std::endl;
+                              //}
+                              ASSERT_EQ(curl_result, 0);
+
+                              // Make sure that the file exists, but in the renamed version
+                              ASSERT_FALSE(std::filesystem::exists(ftp_root_dir / upload_target_filename));
+                              ASSERT_TRUE(std::filesystem::exists(ftp_root_dir / rename_target_filename));
+                              ASSERT_TRUE(std::filesystem::is_regular_file(ftp_root_dir / rename_target_filename));
+                            }
+                          });
+    }
+
+    // Wait for all curl upload commands to finish
+    for (auto& thread : threads)
+    {
+      thread.join();
+    }
+  }
 }
 #endif
 
@@ -293,6 +393,7 @@ TEST(FineFTPTest, UploadAndRename)
                               std::string curl_command = "curl -T \"" + (upload_dir / "hello_world.txt").string() + "\" "
                                                                 + " \"ftp://localhost:2121/" + upload_target_filename + "\" "
                                                                 + " --ftp-create-dirs "
+                                                                + " -S -s "
                                                                 + " -Q -\"RNFR " + upload_target_filename + "\" "
                                                                 + " -Q -\"RNTO " + rename_target_filename + "\" ";
 
@@ -399,7 +500,7 @@ TEST(FineFTPTest, UTF8Paths)
 
   // Upload the upload dir to the server with curl. Make sure to let curl create subdirs automatically
   {
-    std::string curl_command_utf8 = "curl -T \"" + local_file_path_utf8 + "\" \"ftp://localhost:2121/" + utf8_laughing_emoji + "/\" --ftp-create-dirs";
+    std::string curl_command_utf8 = "curl  -S -s -T \"" + local_file_path_utf8 + "\" \"ftp://localhost:2121/" + utf8_laughing_emoji + "/\" --ftp-create-dirs";
 #ifdef WIN32
     auto curl_result = _wsystem(fineftp::StrConvert::Utf8ToWide(curl_command_utf8).c_str());
     auto target_file_path_in_ftp_root = ftp_root_dir / fineftp::StrConvert::Utf8ToWide(utf8_laughing_emoji) / filename_wstr;
@@ -417,7 +518,7 @@ TEST(FineFTPTest, UTF8Paths)
 
   // Download the file again to the download dir.
   {
-    std::string curl_command_download_utf8 = "curl -o \"" + (download_dir / filename_utf8).string() + "\" \"ftp://localhost:2121/" + utf8_laughing_emoji + "/" + filename_utf8 + "\"";
+    std::string curl_command_download_utf8 = "curl  -S -s -o \"" + (download_dir / filename_utf8).string() + "\" \"ftp://localhost:2121/" + utf8_laughing_emoji + "/" + filename_utf8 + "\"";
 #ifdef WIN32
     auto curl_result = _wsystem(fineftp::StrConvert::Utf8ToWide(curl_command_download_utf8).c_str());
     auto target_file_path_in_download_dir = download_dir / filename_wstr;
