@@ -540,26 +540,29 @@ namespace fineftp
 
     const std::ios::openmode open_mode =
        std::ios::ate | (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
+    std::fstream::pos_type file_size;
+    {
 #if defined(WIN32) && !defined(__GNUG__)
-    std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
+      std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
 #else
-    std::ifstream file(local_path, open_mode);
+      std::ifstream file(local_path, open_mode);
 #endif
 
-    if (!file.good())
-    {
-      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for size retrieval");
-      return;
-    }
+      if (!file.good())
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for size retrieval");
+        return;
+      }
 
-    // RFC 3659 actually states that the returned size should depend on the STRU, MODE, and TYPE and that
-    // the returned size should be exact. We don't comply with this here. The size returned is the
-    // size for TYPE=I.
-    auto file_size = file.tellg();
-    if (std::fstream::pos_type(-1) == file_size)
-    {
-      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error getting file size");
-      return;
+      // RFC 3659 actually states that the returned size should depend on the STRU, MODE, and TYPE and that
+      // the returned size should be exact. We don't comply with this here. The size returned is the
+      // size for TYPE=I.
+      file_size = file.tellg();
+      if (std::fstream::pos_type(-1) == file_size)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error getting file size");
+        return;
+      }
     }
 
     // Form reply string

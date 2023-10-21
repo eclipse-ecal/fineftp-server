@@ -24,7 +24,7 @@ public:
   ReadableFile& operator=(ReadableFile&&)      = delete;
   ~ReadableFile();
 
-#if defined(WIN32) && !defined(__GNUG__)
+#if !defined(__GNUG__)
   using Str = std::wstring;
 #else
   using Str = std::string;

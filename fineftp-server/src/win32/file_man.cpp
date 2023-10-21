@@ -61,7 +61,7 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
     }
   }
 
-#if defined(WIN32) && !defined(__GNUG__)
+#if !defined(__GNUG__)
   auto handle =
     ::CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 #else
