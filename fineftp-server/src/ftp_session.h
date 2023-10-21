@@ -143,11 +143,9 @@ namespace fineftp
     void sendFile               (const std::shared_ptr<ReadableFile>&          file);
 
     void addDataToBufferAndSend (const std::shared_ptr<std::vector<char>>&     data
-                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket
-                               , const std::function<void(void)>&              fetch_more = []() {return; });
+                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
-    void writeDataToSocket      (const std::shared_ptr<asio::ip::tcp::socket>& data_socket
-                               , const std::function<void(void)>&              fetch_more);
+    void writeDataToSocket      (const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
   ////////////////////////////////////////////////////////
   // FTP data-socket receive
@@ -210,7 +208,7 @@ namespace fineftp
 
     // Command Socket
     asio::ip::tcp::socket    command_socket_;
-    asio::io_service::strand command_write_strand_;
+    asio::io_service::strand command_strand_;
     asio::streambuf          command_input_stream_;
     std::deque<std::string>  command_output_queue_;
 
