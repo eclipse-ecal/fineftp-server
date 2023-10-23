@@ -1152,7 +1152,7 @@ namespace fineftp
                                 {
                                   if (ec)
                                   {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                     return;
                                   }
       // TODO: close acceptor after connect?
@@ -1193,7 +1193,7 @@ namespace fineftp
                                 {
                                   if (ec)
                                   {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                     return;
                                   }
 
@@ -1227,7 +1227,7 @@ namespace fineftp
                                 {
                                   if (ec)
                                   {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                     return;
                                   }
 
@@ -1244,7 +1244,7 @@ namespace fineftp
                                                       {
                                                         if (ec)
                                                         {
-                                                          me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                                          me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                                         }
                                                         else
                                                         {
@@ -1332,7 +1332,7 @@ namespace fineftp
                                 {
                                   if (ec)
                                   {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted (" + std::to_string(ec.value()) + "): " + ec.message());
                                     return;
                                   }
 

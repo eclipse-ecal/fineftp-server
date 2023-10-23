@@ -74,7 +74,8 @@ TEST(FineFTPTest, SimpleUploadDownload) {
   // Download the file again
   {
     std::string curl_command_download = "curl -S -s -o \"" + local_root_dir.string() + "/hello_world_download.txt\" \"ftp://localhost:2121/hello_world.txt\"";
-    std::system(curl_command_download.c_str());
+    auto curl_result = std::system(curl_command_download.c_str());
+    ASSERT_EQ(curl_result, 0);
 
     // Make sure that the files are identical
     auto local_file_download = local_root_dir / "hello_world_download.txt";
@@ -398,12 +399,49 @@ TEST(FineFTPTest, UploadAndRename)
                                                                 + " -Q -\"RNTO " + rename_target_filename + "\" ";
 
                               auto curl_result = std::system(curl_command.c_str());
-                              ASSERT_EQ(curl_result, 0);
 
+                              auto s = ftp_root_dir / upload_target_filename;
+                              if (std::filesystem::exists(s))
+                              {
+                                auto err = std::error_code{};
+                                auto sz  = std::filesystem::file_size(s, err);
+                                std::cerr << "error: " << s.string() << " of size " << sz << std::endl;
+                              }
+
+                              auto t = ftp_root_dir / rename_target_filename;
+                              if (!std::filesystem::exists(t))
+                              {
+                                std::cerr << "error: " << t.string() << " does not exist" << std::endl;
+                              }
+
+                              if (0 != curl_result)
+                              {
+                                std::cerr
+                                  << "error: " << curl_result << " returned by curl when operating on "
+                                  << upload_target_filename << std::endl;
+                              }
+
+                              // Check the return value of curl 
+                              ASSERT_EQ(curl_result, 0);
+                              
                               // Make sure that the file exists, but in the renamed version
-                              ASSERT_FALSE(std::filesystem::exists(ftp_root_dir / upload_target_filename));
                               ASSERT_TRUE(std::filesystem::exists(ftp_root_dir / rename_target_filename));
                               ASSERT_TRUE(std::filesystem::is_regular_file(ftp_root_dir / rename_target_filename));
+                              ASSERT_FALSE(std::filesystem::exists(ftp_root_dir / upload_target_filename));
+                              
+                              // Check the stored file size
+                              auto err         = std::error_code{};
+                              auto stored_size = std::filesystem::file_size(ftp_root_dir / rename_target_filename, err);
+                              
+                              if (stored_size != 11)
+                              {
+                                // Wait a little and retry
+                                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                                stored_size = std::filesystem::file_size(ftp_root_dir / rename_target_filename, err);
+                              }
+
+                              ASSERT_EQ(stored_size, 11);
+                              ASSERT_FALSE(bool{err});
                             }
                           });
     }
