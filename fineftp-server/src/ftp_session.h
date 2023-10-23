@@ -130,7 +130,8 @@ namespace fineftp
                        , const std::shared_ptr<WriteableFile>&     file
                        , const std::function<void(void)>&          fetch_more = []() {return; });
 
-    void endDataReceiving(const std::shared_ptr<WriteableFile>& file);
+    void endDataReceiving(const std::shared_ptr<WriteableFile>& file
+                        , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
   ////////////////////////////////////////////////////////
   // Helpers
@@ -191,8 +192,7 @@ namespace fineftp
     asio::ip::tcp::acceptor                        data_acceptor_;
     std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
     std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
-    asio::io_service::strand                       data_buffer_strand_;
-    asio::io_service::strand                       file_rw_strand_;
+    asio::io_service::strand                       data_socket_strand_;
 
     // Current state
     std::string ftp_working_directory_;
