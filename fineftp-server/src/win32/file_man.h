@@ -6,6 +6,7 @@
 #include <windows.h>
 
 #include <cstdint>
+#include <ios>
 #include <memory>
 #include <string>
 
@@ -62,6 +63,36 @@ private:
   HANDLE        map_handle_ = INVALID_HANDLE_VALUE;
 };
 
+
+/// @brief A writeable file tailored for the Win32 environment.
+class WriteableFile
+{
+public:
+  /// @brief Constructor.
+  ///
+  /// @param filename  The (UTF-8 encoded) name of the file.
+  /// @param mode      The open mode to use for the file (std::ios::out is implied).
+  WriteableFile(const std::string& filename, std::ios::openmode mode);
+
+  // Copy disable
+  WriteableFile(const WriteableFile&)            = delete;
+  WriteableFile& operator=(const WriteableFile&) = delete;
+
+  // Move disabled (as we are storing the shared_from_this() pointer in lambda captures)
+  WriteableFile& operator=(WriteableFile&&)      = delete;
+  WriteableFile(WriteableFile&&)                 = delete;
+
+  ~WriteableFile();
+
+  void write(const char* data, std::size_t sz);
+  void close();
+  bool good() const;
+
+private:
+  HANDLE handle_ = INVALID_HANDLE_VALUE;
+};
+
+
 inline std::size_t ReadableFile::size() const
 {
   return size_;
@@ -75,6 +106,11 @@ inline const std::uint8_t* ReadableFile::data() const
 inline const ReadableFile::Str& ReadableFile::path() const
 {
   return pth_;
+}
+
+inline bool WriteableFile::good() const
+{
+  return INVALID_HANDLE_VALUE != handle_;
 }
 
 }

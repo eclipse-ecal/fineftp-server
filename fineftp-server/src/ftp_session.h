@@ -3,7 +3,6 @@
 #include <asio.hpp>
 
 #include <deque>
-#include <fstream>
 
 #include "ftp_message.h"
 
@@ -16,41 +15,12 @@
 namespace fineftp
 {
   class ReadableFile;
+  class WriteableFile;
 
   class FtpSession
     : public std::enable_shared_from_this<FtpSession>
   {
   private:
-    struct WriteableFile
-    {
-      WriteableFile(const std::string& filename, std::ios::openmode mode)
-#if defined(WIN32) && !defined(__GNUG__)
-        : file_stream_(StrConvert::Utf8ToWide(filename), mode)
-#else
-        : file_stream_(filename, mode)
-#endif
-        , stream_buffer_(1024 * 1024)
-      {
-        file_stream_.rdbuf()->pubsetbuf(stream_buffer_.data(), static_cast<std::streamsize>(stream_buffer_.size()));
-      }
-
-      // Copy
-      WriteableFile(const WriteableFile&)            = delete;
-      WriteableFile& operator=(const WriteableFile&) = delete;
-
-      // Move disabled (as we are storing the shared_from_this() pointer in lambda captures)
-      WriteableFile& operator=(WriteableFile&&)      = delete;
-      WriteableFile(WriteableFile&&)                 = delete;
-
-      ~WriteableFile()
-      {
-        file_stream_.flush();
-        file_stream_.close();
-      }
-
-      std::fstream      file_stream_;
-      std::vector<char> stream_buffer_;
-    };
 
   ////////////////////////////////////////////////////////
   // Public API

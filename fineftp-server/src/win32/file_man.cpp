@@ -6,6 +6,9 @@
 #include <mutex>
 #include <sstream>
 
+#include "win_str_convert.h"
+
+
 namespace fineftp
 {
 
@@ -63,10 +66,10 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
 
 #if !defined(__GNUG__)
   auto handle =
-    ::CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    ::CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 #else
   auto handle =
-    ::CreateFileA(s.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    ::CreateFileA(s.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 #endif
   if (INVALID_HANDLE_VALUE == handle)
   {
@@ -80,7 +83,7 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
     return {};
   }
 
-  auto map_handle = ::CreateFileMapping(handle, 0, PAGE_READONLY, sz.HighPart, sz.LowPart, 0);
+  auto map_handle = ::CreateFileMapping(handle, nullptr, PAGE_READONLY, sz.HighPart, sz.LowPart, nullptr);
   if (INVALID_HANDLE_VALUE == map_handle)
   {
     ::CloseHandle(handle);
@@ -103,6 +106,45 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
   p->map_handle_ = map_handle;
   files[p->pth_] = p;
   return p;
+}
+  
+WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mode)
+{
+  // std::ios::binary is ignored in mode because, on Windows, even ASCII files have to be stored as
+  // binary files as they come in with the right line endings.
+  (void)mode;
+#if !defined(__GNUG__)
+  auto wfilename = StrConvert::Utf8ToWide(filename);
+  handle_ = ::CreateFileW(wfilename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+#else
+  handle_ = ::CreateFileA(filename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+#endif
+
+  if (INVALID_HANDLE_VALUE != handle_ && (mode & std::ios::app) == std::ios::app)
+  {
+    if (INVALID_SET_FILE_POINTER == ::SetFilePointer(handle_, 0, nullptr, FILE_END))
+    {
+      close();
+    }
+  }
+}
+
+WriteableFile::~WriteableFile()
+{
+  close();
+}
+  
+void WriteableFile::close()
+{
+  if (INVALID_HANDLE_VALUE != handle_)
+  {
+    ::CloseHandle(handle_);
+  }
+}
+  
+void WriteableFile::write(const char* data, std::size_t sz)
+{
+  (void)::WriteFile(handle_, data, sz, nullptr, nullptr);
 }
 
 }

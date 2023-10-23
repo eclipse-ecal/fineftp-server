@@ -613,10 +613,10 @@ namespace fineftp
       }
     }
 
-    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::binary) : (std::ios::out));    
+    const std::ios::openmode open_mode = (data_type_binary_ ? std::ios::binary : std::ios::openmode{});
     const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(local_path, open_mode);
 
-    if (!file->file_stream_.good())
+    if (!file->good())
     {
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
       return;
@@ -659,10 +659,10 @@ namespace fineftp
       return;
     }
 
-    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::app | std::ios::binary) : (std::ios::out | std::ios::app));
+    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::app | std::ios::binary) : (std::ios::app));
     const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(local_path, open_mode);
 
-    if (!file->file_stream_.good())
+    if (!file->good())
     {
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
       return;
@@ -1240,7 +1240,7 @@ namespace fineftp
                                     // Send the file
                                     asio::async_write(*data_socket
                                                     , asio::buffer(file->data(), file->size())
-                                                    , me->data_buffer_strand_.wrap([me, file, data_socket](asio::error_code ec, std::size_t /*bytes_to_transfer*/)
+                                                    , [me, file, data_socket](asio::error_code ec, std::size_t /*bytes_to_transfer*/)
                                                       {
                                                         if (ec)
                                                         {
@@ -1250,7 +1250,7 @@ namespace fineftp
                                                         {
                                                           me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                                                         }
-                                                      }));
+                                                      });
                                   }
                                 });
   }
@@ -1370,15 +1370,14 @@ namespace fineftp
   void FtpSession::writeDataToFile(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<WriteableFile>& file, const std::function<void(void)>& fetch_more)
   {
     fetch_more();
-    file->file_stream_.write(data->data(), static_cast<std::streamsize>(data->size()));
+    file->write(data->data(), data->size());
   }
 
   void FtpSession::endDataReceiving(const std::shared_ptr<WriteableFile>& file)
   {
     file_rw_strand_.post([me = shared_from_this(), file]()
                         {
-                          file->file_stream_.flush();
-                          file->file_stream_.close();
+                          file->close();
                           me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                         });
   }
