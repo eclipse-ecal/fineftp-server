@@ -115,9 +115,9 @@ WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mod
   (void)mode;
 #if !defined(__GNUG__)
   auto wfilename = StrConvert::Utf8ToWide(filename);
-  handle_ = ::CreateFileW(wfilename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+  handle_ = ::CreateFileW(wfilename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL /*FILE_FLAG_WRITE_THROUGH*/, 0);
 #else
-  handle_ = ::CreateFileA(filename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+  handle_ = ::CreateFileA(filename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, /*FILE_ATTRIBUTE_NORMAL*/ FILE_FLAG_WRITE_THROUGH, 0);
 #endif
 
   if (INVALID_HANDLE_VALUE != handle_ && (mode & std::ios::app) == std::ios::app)
@@ -139,6 +139,7 @@ void WriteableFile::close()
   if (INVALID_HANDLE_VALUE != handle_)
   {
     ::CloseHandle(handle_);
+    handle_ = INVALID_HANDLE_VALUE;
   }
 }
   

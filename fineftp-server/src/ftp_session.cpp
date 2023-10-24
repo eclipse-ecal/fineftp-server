@@ -122,7 +122,7 @@ namespace fineftp
                         }
                         else
                         {
-                          std::cerr << "Command write error: " << ec.message() << std::endl;
+                          std::cerr << "Command write error for message " << me->command_output_queue_.front() << ec.message() << std::endl;
                         }
                       }
                     ));
@@ -254,10 +254,12 @@ namespace fineftp
       // Close command socket
       command_strand_.post([me = shared_from_this()]()
                             {
+          // TODO: Decide when to close the command socket. Doing that here actually breaks sending the "221 Closing command socket" message.
+
                               // Properly close command socket
-                              asio::error_code ec;
-                              me->command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-                              me->command_socket_.close(ec);
+                              //asio::error_code ec;
+                              //me->command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+                              //me->command_socket_.close(ec);
                             });
     }
     else

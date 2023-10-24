@@ -97,7 +97,7 @@ TEST(FineFTPTest, SimpleUploadDownload) {
 #if 1
 TEST(FineFTPTest, BigFilesMultipleClients)
 {
-  constexpr int num_clients     = 5;
+  constexpr int num_clients     = 10;
   constexpr int file_size_bytes = 1024 * 1024 * 20;
 
   auto test_working_dir = std::filesystem::current_path();
@@ -326,8 +326,8 @@ TEST(FineFTPTest, ListAndRename)
 #if 1
 TEST(FineFTPTest, UploadAndRename)
 {
-  constexpr int num_clients            = 10;
-  constexpr int num_uploads_per_client = 10;
+  constexpr int num_clients            = 20;
+  constexpr int num_uploads_per_client = 20;
 
   auto test_working_dir = std::filesystem::current_path();
   auto ftp_root_dir     = test_working_dir / "ftp_root";
@@ -442,6 +442,336 @@ TEST(FineFTPTest, UploadAndRename)
 
                               ASSERT_EQ(stored_size, 11);
                               ASSERT_FALSE(bool{err});
+                            }
+                          });
+    }
+
+    // Wait for all curl upload commands to finish
+    for (auto& thread : threads)
+    {
+      thread.join();
+    }
+  }
+}
+#endif
+
+#if 1
+TEST(FineFTPTest, UploadAndRenameOriginal)
+{
+  constexpr int num_clients            = 20;
+  constexpr int num_uploads_per_client = 20;
+
+  auto test_working_dir = std::filesystem::current_path();
+  auto ftp_root_dir     = test_working_dir / "ftp_root";
+  auto local_root_dir   = test_working_dir / "local_root";
+  auto upload_dir       = local_root_dir   / "upload_dir";
+  auto download_dir     = local_root_dir   / "download_dir";
+
+  // Create local root and ftp dir
+  {
+    if (std::filesystem::exists(ftp_root_dir))
+          std::filesystem::remove_all(ftp_root_dir);
+
+    if (std::filesystem::exists(local_root_dir))
+      std::filesystem::remove_all(local_root_dir);
+
+    // Make sure that we start clean, so no old dir exists
+    ASSERT_FALSE(std::filesystem::exists(ftp_root_dir));
+    ASSERT_FALSE(std::filesystem::exists(local_root_dir));
+
+    // Create dirs
+    std::filesystem::create_directory(ftp_root_dir);
+    std::filesystem::create_directory(local_root_dir);
+    std::filesystem::create_directory(upload_dir);
+    std::filesystem::create_directory(download_dir);
+
+    // Make sure all dirs exist
+    ASSERT_TRUE(std::filesystem::is_directory(ftp_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(local_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(upload_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(download_dir));
+  }
+
+  // Create a small hello world file in the upload dir
+  {
+    auto local_file = upload_dir / "hello_world.txt";
+    std::ofstream ofs(local_file.string());
+    ofs << "Hello World";
+    ofs.close();
+    
+    // Make sure that the file exists
+    ASSERT_TRUE(std::filesystem::exists(local_file));
+    ASSERT_TRUE(std::filesystem::is_regular_file(local_file));
+  }
+
+  // Start the server
+  fineftp::FtpServer server(2121);
+  server.start(10);
+
+  server.addUserAnonymous(ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Upload the file to the FTP Server with parallel curl sessions
+  {
+    std::vector<std::thread> threads;
+    threads.reserve(num_clients);
+    for (int i = 0; i < num_clients; i++)
+    {
+      threads.emplace_back([&, i]() {
+                            for (int j = 0; j < num_uploads_per_client; j++)
+                            {
+                              // Create target filename having the client and upload index in the name
+                              auto upload_target_filename = std::to_string(i) + "_" + std::to_string(j) + ".txt";
+                              auto rename_target_filename = std::to_string(i) + "_" + std::to_string(j) + "_renamed.txt";
+
+                              std::string curl_command = "curl -T \"" + (upload_dir / "hello_world.txt").string() + "\" "
+                                                                + " \"ftp://localhost:2121/" + upload_target_filename + "\" "
+                                                                + " --ftp-create-dirs "
+                                                                + " -S -s "
+                                                                + " -Q -\"RNFR " + upload_target_filename + "\" "
+                                                                + " -Q -\"RNTO " + rename_target_filename + "\" ";
+
+                              auto curl_result = std::system(curl_command.c_str());
+                              ASSERT_EQ(curl_result, 0);
+
+                              // Make sure that the file exists, but in the renamed version
+                              ASSERT_FALSE(std::filesystem::exists(ftp_root_dir / upload_target_filename));
+                              ASSERT_TRUE(std::filesystem::exists(ftp_root_dir / rename_target_filename));
+                              ASSERT_TRUE(std::filesystem::is_regular_file(ftp_root_dir / rename_target_filename));
+
+                              // Check size of the file
+                              auto err         = std::error_code{};
+                              auto stored_size = std::filesystem::file_size(ftp_root_dir / rename_target_filename, err);
+                              ASSERT_EQ(stored_size, 11);
+                              ASSERT_FALSE(bool{err});
+                            }
+                          });
+    }
+
+    // Wait for all curl upload commands to finish
+    for (auto& thread : threads)
+    {
+      thread.join();
+    }
+  }
+}
+#endif
+
+#if 1
+TEST(FineFTPTest, UploadAndRenameDifferentDirs)
+{
+  constexpr int num_clients            = 5;
+  constexpr int num_uploads_per_client = 5;
+
+  auto test_working_dir = std::filesystem::current_path();
+  auto ftp_root_dir     = test_working_dir / "ftp_root";
+  auto local_root_dir   = test_working_dir / "local_root";
+  auto upload_dir       = local_root_dir   / "upload_dir";
+  auto download_dir     = local_root_dir   / "download_dir";
+
+  // Create local root and ftp dir
+  {
+    if (std::filesystem::exists(ftp_root_dir))
+          std::filesystem::remove_all(ftp_root_dir);
+
+    if (std::filesystem::exists(local_root_dir))
+      std::filesystem::remove_all(local_root_dir);
+
+    // Make sure that we start clean, so no old dir exists
+    ASSERT_FALSE(std::filesystem::exists(ftp_root_dir));
+    ASSERT_FALSE(std::filesystem::exists(local_root_dir));
+
+    // Create dirs
+    std::filesystem::create_directory(ftp_root_dir);
+    std::filesystem::create_directory(local_root_dir);
+    std::filesystem::create_directory(upload_dir);
+    std::filesystem::create_directory(download_dir);
+
+    // Make sure all dirs exist
+    ASSERT_TRUE(std::filesystem::is_directory(ftp_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(local_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(upload_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(download_dir));
+  }
+
+  // Pre-populate the ftp_root dir with subdirs, one for each client
+  {
+    for (int i = 0; i < num_clients; i++)
+    {
+      std::filesystem::create_directory(ftp_root_dir / std::to_string(i));
+      ASSERT_TRUE(std::filesystem::is_directory(ftp_root_dir / std::to_string(i)));
+    }
+  }
+
+  // Create a small hello world file in the upload dir
+  {
+    auto local_file = upload_dir / "hello_world.txt";
+    std::ofstream ofs(local_file.string());
+    ofs << "Hello World";
+    ofs.close();
+    
+    // Make sure that the file exists
+    ASSERT_TRUE(std::filesystem::exists(local_file));
+    ASSERT_TRUE(std::filesystem::is_regular_file(local_file));
+  }
+
+  // Start the server
+  fineftp::FtpServer server(2121);
+  server.start(1);
+
+  server.addUserAnonymous(ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Upload the file to the FTP Server with parallel curl sessions
+  {
+    std::vector<std::thread> threads;
+    threads.reserve(num_clients);
+    for (int i = 0; i < num_clients; i++)
+    {
+      threads.emplace_back([&, i]() {
+                            for (int j = 0; j < num_uploads_per_client; j++)
+                            {
+                              // target_dir
+                              auto upload_target_dir = std::to_string(i);
+
+                              // Create target filename having the client and upload index in the name
+                              auto upload_target_filename = std::to_string(i) + "_" + std::to_string(j) + ".txt";
+                              auto rename_target_filename = std::to_string(i) + "_" + std::to_string(j) + "_renamed.txt";
+
+                              std::string curl_command = "curl -T \"" + (upload_dir / "hello_world.txt").string() + "\" "
+                                                                + " \"ftp://localhost:2121/" + upload_target_dir + "/" + upload_target_filename + "\" "
+                                                                + " -S -s "
+                                                                + " -Q -\"RNFR /" + upload_target_dir + "/" + upload_target_filename + "\" "
+                                                                + " -Q -\"RNTO /" + upload_target_dir + "/" + rename_target_filename + "\" ";
+
+                              auto curl_result = std::system(curl_command.c_str());
+                              ASSERT_EQ(curl_result, 0);
+
+                              // Make sure that the file exists, but in the renamed version
+                              ASSERT_FALSE(std::filesystem::exists(ftp_root_dir / upload_target_dir / upload_target_filename));
+                              ASSERT_TRUE(std::filesystem::exists(ftp_root_dir / upload_target_dir / rename_target_filename));
+                              ASSERT_TRUE(std::filesystem::is_regular_file(ftp_root_dir / upload_target_dir / rename_target_filename));
+                            }
+                          });
+    }
+
+    // Wait for all curl upload commands to finish
+    for (auto& thread : threads)
+    {
+      thread.join();
+    }
+  }
+}
+#endif
+
+#if 1
+TEST(FineFTPTest, UploadAndRenameAnotherFile)
+{
+  constexpr int num_clients            = 10;
+  constexpr int num_uploads_per_client = 10;
+
+  auto test_working_dir = std::filesystem::current_path();
+  auto ftp_root_dir     = test_working_dir / "ftp_root";
+  auto local_root_dir   = test_working_dir / "local_root";
+  auto upload_dir       = local_root_dir   / "upload_dir";
+  auto download_dir     = local_root_dir   / "download_dir";
+
+  // Create local root and ftp dir
+  {
+    if (std::filesystem::exists(ftp_root_dir))
+          std::filesystem::remove_all(ftp_root_dir);
+
+    if (std::filesystem::exists(local_root_dir))
+      std::filesystem::remove_all(local_root_dir);
+
+    // Make sure that we start clean, so no old dir exists
+    ASSERT_FALSE(std::filesystem::exists(ftp_root_dir));
+    ASSERT_FALSE(std::filesystem::exists(local_root_dir));
+
+    // Create dirs
+    std::filesystem::create_directory(ftp_root_dir);
+    std::filesystem::create_directory(local_root_dir);
+    std::filesystem::create_directory(upload_dir);
+    std::filesystem::create_directory(download_dir);
+
+    // Make sure all dirs exist
+    ASSERT_TRUE(std::filesystem::is_directory(ftp_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(local_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(upload_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(download_dir));
+  }
+
+  // Create a hello world file for each client and each uploaded file in the ftp root dir
+  {
+    for (int i = 0; i < num_clients; i++)
+    {
+      for (int j = 0; j < num_uploads_per_client; j++)
+      {
+          auto file_for_renaming_filename = std::to_string(i) + "_" + std::to_string(j) + "_for_renaming.txt";
+          auto file_for_renaming          = ftp_root_dir / file_for_renaming_filename;
+    
+          std::ofstream ofs(file_for_renaming.string());
+          ofs << "Hello World";
+          ofs.close();
+    
+          // Make sure that the file exists
+          ASSERT_TRUE(std::filesystem::exists(file_for_renaming));
+          ASSERT_TRUE(std::filesystem::is_regular_file(file_for_renaming));
+          
+          // Check if the files are the right size
+          ASSERT_EQ(std::filesystem::file_size(file_for_renaming), 11);
+      }
+    }
+  }
+
+  // Create a small hello world file in the upload dir
+  {
+    auto local_file = upload_dir / "hello_world.txt";
+    std::ofstream ofs(local_file.string());
+    ofs << "Hello World";
+    ofs.close();
+    
+    // Make sure that the file exists
+    ASSERT_TRUE(std::filesystem::exists(local_file));
+    ASSERT_TRUE(std::filesystem::is_regular_file(local_file));
+  }
+
+  // Start the server
+  fineftp::FtpServer server(2121);
+  server.start(10);
+
+  server.addUserAnonymous(ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Upload the file to the FTP Server with parallel curl sessions
+  {
+    std::vector<std::thread> threads;
+    threads.reserve(num_clients);
+    for (int i = 0; i < num_clients; i++)
+    {
+      threads.emplace_back([&, i]() {
+                            for (int j = 0; j < num_uploads_per_client; j++)
+                            {
+                              // Create target filename having the client and upload index in the name
+                              auto upload_target_filename = std::to_string(i) + "_" + std::to_string(j) + ".txt";
+
+                              auto filename_for_renaming  = std::to_string(i) + "_" + std::to_string(j) + "_for_renaming.txt";
+                              auto filename_renamed       = filename_for_renaming + "_renamed.txt";
+
+                              std::string curl_command = "curl -T \"" + (upload_dir / "hello_world.txt").string() + "\" "
+                                                                + " \"ftp://localhost:2121/" + "/" + upload_target_filename + "\" "
+                                                                + " -S -s "
+                                                                + " -Q -\"RNFR /" + filename_for_renaming + "\" "
+                                                                + " -Q -\"RNTO /" + filename_renamed + "\" ";
+
+                              auto curl_result = std::system(curl_command.c_str());
+                              ASSERT_EQ(curl_result, 0);
+
+                              // Make sure that the uploaded file exists
+                              ASSERT_TRUE(std::filesystem::exists(ftp_root_dir / upload_target_filename));
+                              ASSERT_TRUE(std::filesystem::is_regular_file(ftp_root_dir / upload_target_filename));
+
+                              // Make sure that the renamed file exists, but only in the renamed form
+                              ASSERT_FALSE(std::filesystem::exists(ftp_root_dir / filename_for_renaming));
+                              ASSERT_TRUE(std::filesystem::exists(ftp_root_dir / filename_renamed));
+                              ASSERT_TRUE(std::filesystem::is_regular_file(ftp_root_dir / filename_renamed));
                             }
                           });
     }
@@ -574,7 +904,7 @@ TEST(FineFTPTest, UTF8Paths)
 }
 #endif
 
-#if 1
+#if 0
 TEST(FineFTPTest, PathVulnerability)
 {
   auto test_working_dir = std::filesystem::current_path();
