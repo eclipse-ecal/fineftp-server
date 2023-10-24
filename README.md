@@ -4,7 +4,7 @@
 
 FineFTP is a minimal FTP server library for Windows and Unix flavors. The project is CMake based and only depends on asio, which is integrated as git submodule. No boost is required.
 
-You can easily embed this library into your own project in order to create an embedded FTP Server. It was developed and tested on Windows 10 (Visual Studio 2015 / 2019, MinGW) and Ubuntu 16.04 - 21.10 (gcc 5.4.0 - 11.2.0).
+You can easily embed this library into your own project in order to create an embedded FTP Server. It was developed and tested on Windows 10 (Visual Studio 2015 and newer, MinGW) and Ubuntu 18.04 - 22.04 (gcc 7.4.0 - 11.2.0). It should also run fine on macOS.
 
 ## Features
 
@@ -74,6 +74,61 @@ There is an example project provided that will create an FTP Server at `C:\` (Wi
 
 5. Start `fineftp_example` / `fineftp_example.exe` and connect with your favorite FTP Client (e.g. FileZilla) on port 2121 *(This port is used so you don't need root privileges to start the FTP server)*
 
+## CMake Options
+
+You can set the following CMake Options to control how fineFTP Server is built:
+
+**Option**                       | **Type** | **Default** | **Explanation**                                                                                                 |
+|--------------------------------|----------|-------------|-----------------------------------------------------------------------------------------------------------------|
+| `FINEFTP_SERVER_BUILD_SAMPLES` | `BOOL`   | `ON`        | Build the fineFTP Server sample project.                                                                         |
+| `FINEFTP_SERVER_BUILD_TESTS`   | `BOOL`   | `OFF`       | Build the GoogleTest submodule and the fineftp-server tests. Requires C++17. For executing the tests, `curl` must be available from the `PATH`. |
+| `BUILD_SHARED_LIBS`            | `BOOL`   |             | Not a fineFTP Server option, but use this to control whether you want to have a static or shared library.               |
+
+## How to integrate in your project
+
+### Option 1: Integrate as binaries
+
+1. Download the latest release from the releases page or compile the binaries yourself.
+
+2. Add the fineFTP Server directory to your `CMAKE_PREFIX_PATH`:
+
+    ```shell
+    cmake your_command_line -DCMAKE_PREFIX_PATH=path/to/fineftp/install/dir
+    ```
+
+### Option 2: Integrate as source
+
+1. Make the fineFTP Server directory available in your project. You can either add it as a git submodule, or use CMake FetchContent to download it.
+
+2. Add it to your CMake Project:
+
+    - **Either** by adding the top-level CMakeLists.txt to your project
+
+        ```cmake
+        add_subdirectory(path/to/fineftp-server)
+        ```
+
+        This which will inherit some behavior:
+
+        - You can use the CMake options described below
+        - You will get the asio version shipped with fineFTP
+        - The debug / minsize / relwithdebinfo postfix will be set automatically
+
+
+    - **Or** if you want to get a very clean version, which doesn't set any unnecessary options, include the `fineftp-server/server` subdirectory:
+
+        ```cmake
+        add_subdirectory(path/to/fineftp-server/server)
+        ```
+
+      You have to provide the required asio target on your own.
+
+### Link against fineFTP Server
+
+```cmake
+find_package(fineftp REQUIRED)
+target_link_libraries(your_target PRIVATE fineftp::server)
+```
 
 ## Contribute
 
