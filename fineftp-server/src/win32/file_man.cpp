@@ -112,12 +112,28 @@ WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mod
 {
   // std::ios::binary is ignored in mode because, on Windows, even ASCII files have to be stored as
   // binary files as they come in with the right line endings.
-  (void)mode;
+
+  DWORD dwDesiredAccess = GENERIC_WRITE;  // It's always a writeable file
+  if (mode & std::ios::app)
+  {
+    dwDesiredAccess |= FILE_APPEND_DATA;  // Append to the file
+  }
+
+  DWORD dwCreationDisposition = 0;
+  if (mode & std::ios::app)
+  {
+    dwCreationDisposition = OPEN_EXISTING;   // Append => Open existing file
+  }
+  else
+  {
+    dwCreationDisposition = CREATE_ALWAYS;   // Not Append => Create new file
+  }
+
 #if !defined(__GNUG__)
   auto wfilename = StrConvert::Utf8ToWide(filename);
-  handle_ = ::CreateFileW(wfilename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL /*FILE_FLAG_WRITE_THROUGH*/, 0);
+  handle_ = ::CreateFileW(wfilename.c_str(), dwDesiredAccess, FILE_SHARE_DELETE, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
 #else
-  handle_ = ::CreateFileA(filename.c_str(), GENERIC_WRITE, FILE_SHARE_DELETE, nullptr, CREATE_NEW, /*FILE_ATTRIBUTE_NORMAL*/ FILE_FLAG_WRITE_THROUGH, 0);
+  handle_ = ::CreateFileA(filename.c_str(), dwDesiredAccess, FILE_SHARE_DELETE, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
 #endif
 
   if (INVALID_HANDLE_VALUE != handle_ && (mode & std::ios::app) == std::ios::app)

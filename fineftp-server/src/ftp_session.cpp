@@ -621,7 +621,12 @@ namespace fineftp
 
     if (!file->good())
     {
+#ifdef WIN32
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer: " + GetLastErrorStr());
+#else
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+#endif // WIN32
+
       return;
     }
 
@@ -667,7 +672,11 @@ namespace fineftp
 
     if (!file->good())
     {
+#ifdef WIN32
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer: " + GetLastErrorStr());
+#else
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+#endif // WIN32
       return;
     }
 
