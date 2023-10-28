@@ -177,24 +177,27 @@ namespace fineftp
     // "Global" io service
     asio::io_service&        io_service_;
 
-    // Command Socket
-    asio::ip::tcp::socket    command_socket_;
+    // Command Socket.
+    // Note that the command_strand_ is used to serialize access to all of the 9 member variables following it.
     asio::io_service::strand command_strand_;
+    asio::ip::tcp::socket    command_socket_;
     asio::streambuf          command_input_stream_;
     std::deque<std::string>  command_output_queue_;
 
     std::string last_command_;
     std::string rename_from_path_;
     std::string username_for_login_;
-
-    // Data Socket (=> passive mode)
-    bool                                           data_type_binary_;
-    asio::ip::tcp::acceptor                        data_acceptor_;
-    std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
-    std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
-    asio::io_service::strand                       data_socket_strand_;
+    bool        data_type_binary_;
 
     // Current state
     std::string ftp_working_directory_;
+
+    // Data Socket (=> passive mode)
+    asio::ip::tcp::acceptor                        data_acceptor_;
+
+    // Note that the data_socket_strand_ is used to serialize access to the 2 member variables following it.
+    asio::io_service::strand                       data_socket_strand_;
+    std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
+    std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
   };
 }
