@@ -80,9 +80,11 @@ You can set the following CMake Options to control how fineFTP Server is built:
 
 **Option**                       | **Type** | **Default** | **Explanation**                                                                                                 |
 |--------------------------------|----------|-------------|-----------------------------------------------------------------------------------------------------------------|
-| `FINEFTP_SERVER_BUILD_SAMPLES` | `BOOL`   | `ON`        | Build the fineFTP Server sample project.                                                                         |
-| `FINEFTP_SERVER_BUILD_TESTS`   | `BOOL`   | `OFF`       | Build the GoogleTest submodule and the fineftp-server tests. Requires C++17. For executing the tests, `curl` must be available from the `PATH`. |
-| `BUILD_SHARED_LIBS`            | `BOOL`   |             | Not a fineFTP Server option, but use this to control whether you want to have a static or shared library.               |
+| `FINEFTP_SERVER_BUILD_SAMPLES` | `BOOL` | `ON` | Build the fineFTP Server sample project.                                                                         |
+| `FINEFTP_SERVER_BUILD_TESTS` | `BOOL` | `OFF` | Build the the fineftp-server tests. Requires C++17. For executing the tests, `curl` must be available from the `PATH`. |
+| `FINEFTP_SERVER_USE_BUILTIN_ASIO`| `BOOL`| `ON` | Use the builtin asio submodule. If set to `OFF`, asio must be available from somewhere else (e.g. system libs). |
+| `FINEFTP_SERVER_USE_BUILTIN_GTEST`| `BOOL`| `ON` <br>_(when building tests)_ | Use the builtin GoogleTest submodule. Only needed if `FINEFTP_SERVER_BUILD_TESTS` is `ON`. If set to `OFF`, GoogleTest must be available from somewhere else (e.g. system libs). |
+| `BUILD_SHARED_LIBS` | `BOOL` |             | Not a fineFTP Server option, but use this to control whether you want to have a static or shared library.               |
 
 ## How to integrate in your project
 

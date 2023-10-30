@@ -15,5 +15,5 @@ if(NOT TARGET GTest::gtest_main)
   add_library(GTest::gtest_main ALIAS gtest_main)
 endif()
 
-# Prepend gtest-module/FindGTest.cmake to Module Path
-list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_LIST_DIR}/gtest-module")
+# Prepend googletest-module/FindGTest.cmake to Module Path
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_LIST_DIR}/googletest-module")
