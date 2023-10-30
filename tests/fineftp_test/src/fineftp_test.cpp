@@ -1063,7 +1063,10 @@ TEST(FineFTPTest, ReplaceFile) {
 }
 #endif
 
-#if 0
+#if 1
+// This test checks whether the user can access a path above the root dir. This
+// had been the case in the past, so now there is a special test for it to make
+// sure this never happens again.
 TEST(FineFTPTest, PathVulnerability)
 {
   auto test_working_dir = std::filesystem::current_path();

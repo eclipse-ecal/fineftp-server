@@ -71,7 +71,7 @@ namespace fineftp
 
     std::map<std::string, FileStatus> dirContent(const std::string& path);
 
-    std::string cleanPath(const std::string& path, bool windows_path, char output_separator);
+    std::string cleanPath(const std::string& path, bool path_is_windows_path, char output_separator);
 
     std::string cleanPathNative(const std::string& path);
   }

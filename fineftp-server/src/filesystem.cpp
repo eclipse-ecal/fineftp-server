@@ -313,7 +313,7 @@ namespace Filesystem
     return content;
   }
 
-  std::string cleanPath(const std::string& path, bool windows_path, const char output_separator)
+  std::string cleanPath(const std::string& path, bool path_is_windows_path, const char output_separator)
   {
     if (path.empty())
     {
@@ -324,7 +324,7 @@ namespace Filesystem
 
     std::string absolute_root;
 
-    if (windows_path)
+    if (path_is_windows_path)
     {
       /* On Windows, a root folder can be:
        *    C:\
@@ -371,7 +371,7 @@ namespace Filesystem
 
       do
       {
-        if (windows_path)
+        if (path_is_windows_path)
           end = path.find_first_of("/\\", start);
         else
           end = path.find_first_of('/', start);
@@ -431,7 +431,7 @@ namespace Filesystem
     std::stringstream path_ss;
     path_ss << absolute_root;
 
-    if (windows_path && !absolute_root.empty())
+    if (path_is_windows_path && !absolute_root.empty())
     {
       path_ss << output_separator; // The windows drive must be followed by a separator. When referencing a network drive.
     }
@@ -456,10 +456,11 @@ namespace Filesystem
     constexpr bool windows_path = true;
     constexpr char separator = '\\';
 #else // WIN32
-    constexpr bool windows_path = false;
+    constexpr bool path_is_windows_path = false;
     constexpr char separator = '/';
 #endif // WIN32
     return cleanPath(path, windows_path, separator);
   }
+
 }
 }

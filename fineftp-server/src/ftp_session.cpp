@@ -1410,7 +1410,8 @@ namespace fineftp
 
     if (!rel_or_abs_ftp_path.empty() && (rel_or_abs_ftp_path[0] == '/'))
     {
-      absolute_ftp_path = rel_or_abs_ftp_path;
+      // Absolut path is given. We still clean it to make sure it doesn't contain any ".." that go above the root directory.
+      absolute_ftp_path = fineftp::Filesystem::cleanPath(rel_or_abs_ftp_path, false, '/');
     }
     else
     {
@@ -1424,8 +1425,10 @@ namespace fineftp
   {
     assert(logged_in_user_);
 
-    // First make the ftp path absolute if it isn't already
-    const std::string absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
+    // First make the ftp path absolute if it isn't already. This also cleans
+    // the path and makes sure that it doesn't contain any ".." that go above
+    // the root directory.
+    std::string absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
 
     // Now map it to the local filesystem
     return fineftp::Filesystem::cleanPathNative(logged_in_user_->local_root_path_ + "/" + absolute_ftp_path);
