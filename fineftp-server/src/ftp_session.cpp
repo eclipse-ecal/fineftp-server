@@ -25,12 +25,12 @@ namespace fineftp
     : completion_handler_   (completion_handler)
     , user_database_        (user_database)
     , io_service_           (io_service)
-    , command_socket_       (io_service)
     , command_strand_       (io_service)
+    , command_socket_       (io_service)
     , data_type_binary_     (false)
+    , ftp_working_directory_("/")
     , data_acceptor_        (io_service)
     , data_socket_strand_   (io_service)
-    , ftp_working_directory_("/")
   {
   }
 
