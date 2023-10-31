@@ -533,7 +533,9 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
       return;
     }
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileRead) == 0)
+
+    // We allow the SIZE command both for FileRead and DirList permissions.
+    if (static_cast<int>(logged_in_user_->permissions_ & (Permission::FileRead | Permission::DirList)) == 0)
     {
       sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
       return;
