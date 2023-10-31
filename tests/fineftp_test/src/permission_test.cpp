@@ -14,9 +14,19 @@
 
 namespace
 {
+#ifdef WIN32
   constexpr int curl_return_code_quote_command_error = 21;
   constexpr int curl_return_code_upload_failed       = 25;
   constexpr int curl_return_code_login_failed        = 67;
+#else
+  // I have absolutely no idea, why the return codes are shifted by 8 bit on Linux and macOS. 
+  // However, for some reasons they are.
+  // Here are the original return codes, that are only true on Windows:
+  // https://everything.curl.dev/usingcurl/returns
+  constexpr int curl_return_code_quote_command_error = 21 << 8;
+  constexpr int curl_return_code_upload_failed       = 25 << 8;
+  constexpr int curl_return_code_login_failed        = 67 << 8;
+#endif // WIN32
 
   struct DirPreparer
   {
