@@ -648,28 +648,50 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
       return;
     }
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileAppend) == 0)
+
+    // Check whether the file exists. This determines whether we need Append or Write Permissions
+    const std::string local_path = toLocalPath(param);
+    auto existing_file_filestatus = Filesystem::FileStatus(local_path);
+
+    if (existing_file_filestatus.isOk())
     {
-      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
-      return;
+      // The file does exist => we need Append Permissions
+      if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileAppend) == 0)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+        return;
+      }
+
+      // Return error message for anything that is not a file
+      if(existing_file_filestatus.type() != Filesystem::FileType::RegularFile)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Pathname is not a file");
+        return;
+      }
     }
+    else
+    {
+      // The file does not exist => we need Write Permissions
+      if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileWrite) == 0)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+        return;
+      }
+    }
+
     if (!data_acceptor_.is_open())
     {
       sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
       return;
     }
 
-    const std::string local_path = toLocalPath(param);
+    // If the file did not exist, we create a new one. Otherwise, we open it in append mode.
+    std::ios::openmode open_mode;
+    if (existing_file_filestatus.isOk())
+      open_mode = (data_type_binary_ ? (std::ios::app | std::ios::binary) : (std::ios::app));
+    else
+      open_mode = (data_type_binary_ ? (std::ios::binary) : std::ios::openmode{});
 
-    auto existing_file_filestatus = Filesystem::FileStatus(local_path);
-    if (!existing_file_filestatus.isOk()
-      || (existing_file_filestatus.type() != Filesystem::FileType::RegularFile))
-    {
-      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "File does not exist.");
-      return;
-    }
-
-    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::app | std::ios::binary) : (std::ios::app));
     const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(local_path, open_mode);
 
     if (!file->good())
