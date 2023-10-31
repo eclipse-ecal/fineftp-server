@@ -453,13 +453,13 @@ namespace Filesystem
   std::string cleanPathNative(const std::string& path)
   {
 #ifdef WIN32
-    constexpr bool windows_path = true;
+    constexpr bool path_is_windows_path = true;
     constexpr char separator = '\\';
 #else // WIN32
     constexpr bool path_is_windows_path = false;
     constexpr char separator = '/';
 #endif // WIN32
-    return cleanPath(path, windows_path, separator);
+    return cleanPath(path, path_is_windows_path, separator);
   }
 
 }
