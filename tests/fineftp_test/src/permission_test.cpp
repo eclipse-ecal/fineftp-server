@@ -801,8 +801,183 @@ TEST(PermissionTest, UploadToPathThatIsADir)
 }
 #endif
 
-// AppendToDirname
+#if 1
+TEST(PermissionTest, AppendToPathThatIsADir)
+{
+  const DirPreparer dir_preparer;
+
+  // Create FTP Server
+  fineftp::FtpServer server(0);
+  server.start(1);
+  uint16_t ftp_port = server.getPort();
+
+  server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
+
+  std::string target_filename_that_is_a_dir = "/" + dir_preparer.ftp_subdir_a_empty.string();
+
+  // Create curl string to upload a file to a new location
+  std::string curl_command = std::string("curl -T ")
+                            + " \"" + dir_preparer.local_file_1.string() + "\" "
+                            + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + target_filename_that_is_a_dir + "\""
+                            + " -s -S --append";
+
+
+  auto curl_result = std::system(curl_command.c_str());
+
+  // Test for Failure
+  ASSERT_EQ(curl_result, curl_return_code_upload_failed);
+
+  // Make sure that the dir still exists and that it in fact is a dir
+  ASSERT_TRUE(std::filesystem::exists(dir_preparer.local_ftp_root_dir / dir_preparer.ftp_subdir_a_empty));
+  ASSERT_TRUE(std::filesystem::is_directory(dir_preparer.local_ftp_root_dir / dir_preparer.ftp_subdir_a_empty));
+}
+#endif
 
 // Rename nonexisting
 
-// Delete nonexisting
+#if 1
+TEST(PermissionTest, RenameNonExistingFile)
+{
+  const DirPreparer dir_preparer;
+
+  // Create FTP Server
+  fineftp::FtpServer server(0);
+  server.start(1);
+  uint16_t ftp_port = server.getPort();
+
+  server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
+
+  std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
+
+#ifdef WIN32
+                            std::string curl_output_file = "NUL";
+#else // WIN32
+                            std::string curl_output_file = "/dev/null";
+#endif // WIN32
+
+  std::string curl_command = std::string("curl -Q \"RNFR /nonexisting_file\" ")
+                                  + " -Q \"RNTO /someotherfile\" "
+                                  + " -S -s "
+                                  + " -o " + curl_output_file + " "
+                                  + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
+
+  auto curl_result = std::system(curl_command.c_str());
+
+  // Test for Failure
+  ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
+}
+#endif
+
+#if 1
+TEST(PermissionTest, RenameTargetExistsAlready)
+{
+  const DirPreparer dir_preparer;
+
+  // Create FTP Server
+  fineftp::FtpServer server(0);
+  server.start(1);
+  uint16_t ftp_port = server.getPort();
+
+  server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
+
+  std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
+
+#ifdef WIN32
+                            std::string curl_output_file = "NUL";
+#else // WIN32
+                            std::string curl_output_file = "/dev/null";
+#endif // WIN32
+
+  std::string rename_source_file = "/" + dir_preparer.ftp_file_b1.string();
+  std::string rename_target_file = "/" + dir_preparer.ftp_file_b2.string();
+
+  std::string curl_command = "curl -Q \"RNFR " + rename_source_file + "\" "
+                                  + " -Q \"RNTO " + rename_target_file + "\" "
+                                  + " -S -s "
+                                  + " -o " + curl_output_file + " "
+                                  + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
+
+  auto curl_result = std::system(curl_command.c_str());
+
+  // Test for Failure
+  ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
+
+  // Test that both old files still exist and have their old content
+  ASSERT_TRUE(std::filesystem::exists(dir_preparer.local_ftp_root_dir / dir_preparer.ftp_file_b1));
+  ASSERT_TRUE(std::filesystem::exists(dir_preparer.local_ftp_root_dir / dir_preparer.ftp_file_b2));
+
+  std::ifstream ifs((dir_preparer.local_ftp_root_dir / dir_preparer.ftp_file_b1).string());
+  std::string content((std::istreambuf_iterator<char>(ifs)),
+                                   (std::istreambuf_iterator<char>()));
+  ASSERT_EQ(content, dir_preparer.ftp_file_b1_content);
+
+  ifs = std::ifstream((dir_preparer.local_ftp_root_dir / dir_preparer.ftp_file_b2).string());
+  content = std::string((std::istreambuf_iterator<char>(ifs)),
+                                        (std::istreambuf_iterator<char>()));
+  ASSERT_EQ(content, dir_preparer.ftp_file_b2_content);
+}
+#endif
+
+#if 1
+TEST(PermissionTest, DeleteNonExistingWithDELE)
+{
+  const DirPreparer dir_preparer;
+
+  // Create FTP Server
+  fineftp::FtpServer server(0);
+  server.start(1);
+  uint16_t ftp_port = server.getPort();
+
+  server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
+
+  std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
+
+#ifdef WIN32
+                            std::string curl_output_file = "NUL";
+#else // WIN32
+                            std::string curl_output_file = "/dev/null";
+#endif // WIN32
+
+  std::string curl_command = std::string("curl -Q \"DELE /nonexisting_file.txt\" ")
+                                  + " -S -s "
+                                  + " -o " + curl_output_file + " "
+                                  + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
+
+  auto curl_result = std::system(curl_command.c_str());
+
+  // Test for Failure
+  ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
+}
+#endif
+
+#if 1
+TEST(PermissionTest, DeleteNonExistingWithRMD)
+{
+  const DirPreparer dir_preparer;
+
+  // Create FTP Server
+  fineftp::FtpServer server(0);
+  server.start(1);
+  uint16_t ftp_port = server.getPort();
+
+  server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
+
+  std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
+
+#ifdef WIN32
+                            std::string curl_output_file = "NUL";
+#else // WIN32
+                            std::string curl_output_file = "/dev/null";
+#endif // WIN32
+
+  std::string curl_command = std::string("curl -Q \"RMD /nonexisting_dir\" ")
+                                  + " -S -s "
+                                  + " -o " + curl_output_file + " "
+                                  + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
+
+  auto curl_result = std::system(curl_command.c_str());
+
+  // Test for Failure
+  ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
+}
+#endif
