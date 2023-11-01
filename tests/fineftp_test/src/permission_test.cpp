@@ -15,9 +15,11 @@
 namespace
 {
   // https://everything.curl.dev/usingcurl/returns
-  constexpr int curl_return_code_quote_command_error = 21;
-  constexpr int curl_return_code_upload_failed       = 25;
-  constexpr int curl_return_code_login_failed        = 67;
+  constexpr int curl_return_code_ftp_download_failed     = 19; // This is returned, when the file does not exist
+  constexpr int curl_return_code_quote_command_error     = 21;
+  constexpr int curl_return_code_upload_failed           = 25;
+  constexpr int curl_return_code_login_failed            = 67;
+  constexpr int curl_return_code_resource_does_not_exist = 78; // This is returned, when the file exists, but the permissions prevent downloading
 
   // Custom system command that returns the actual return value of the command, even on POSIX Systems.
   int system_execute(const std::string& command)
@@ -671,6 +673,63 @@ TEST(PermissionTest, DeleteEmptyDir)
 }
 #endif
 
+#if 1
+TEST(PermissionTest, DownloadFile)
+{
+  // Downloading a file needs FileRead Permissions
+
+  const std::vector<std::pair<fineftp::Permission, bool>> permissions_under_test
+    = {
+        { fineftp::Permission::All, true},
+        { fineftp::Permission::None, false},
+        { fineftp::Permission::DirList | fineftp::Permission::FileRead, true},
+        { fineftp::Permission::All & (~fineftp::Permission::FileRead), false},
+      };
+
+  for (const auto permission_pair : permissions_under_test)
+  {
+    const DirPreparer dir_preparer;
+
+    // Create FTP Server
+    fineftp::FtpServer server(0);
+    server.start(1);
+    uint16_t ftp_port = server.getPort();
+
+    server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), permission_pair.first);
+
+    // Create curl string to download a file to the local download dir
+    std::filesystem::path download_path = dir_preparer.local_download_dir / "test.txt";
+    std::string curl_command = std::string("curl -o ")
+                            + " \"" + download_path.string() + "\" "
+                            + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "/" + dir_preparer.ftp_file_b1.string() + "\" "
+                            + " -s -S ";
+
+    auto curl_result = system_execute(curl_command);
+
+    if (permission_pair.second)
+    {
+      // Test for Success
+      ASSERT_EQ(curl_result, 0);
+
+      // Make sure that the file exists and has the correct content
+      ASSERT_TRUE(std::filesystem::exists(download_path));
+
+      std::ifstream ifs(download_path.string());
+      std::string content((std::istreambuf_iterator<char>(ifs)),
+                       (std::istreambuf_iterator<char>()));
+      ASSERT_EQ(content, dir_preparer.ftp_file_b1_content);
+    }
+    else
+    {
+      // Test for Failure
+      ASSERT_EQ(curl_result, curl_return_code_resource_does_not_exist);
+
+      // Make sure that the file does not exist
+      ASSERT_FALSE(std::filesystem::exists(download_path));
+    }
+  }
+}
+#endif
 
 /////////////////////////////////
 // Commands that always fail
@@ -688,20 +747,39 @@ TEST(PermissionTest, WrongLogin)
 
   server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
 
-  // Create curl string to upload a file to a new location
-  std::string curl_command = std::string("curl -T ")
-                            + " \"" + dir_preparer.local_file_1.string() + "\" "
-                            + " \"ftp://myuser:wrongpass@localhost:" + std::to_string(ftp_port) + "/test.txt\""
-                            + " -s -S ";
+  // Upload with a wrong password
+  {
+    std::string curl_command = std::string("curl -T ")
+                              + " \"" + dir_preparer.local_file_1.string() + "\" "
+                              + " \"ftp://myuser:wrongpass@localhost:" + std::to_string(ftp_port) + "/test.txt\""
+                              + " -s -S ";
 
 
-  auto curl_result = system_execute(curl_command);
+    auto curl_result = system_execute(curl_command);
 
-  // Test for Failure
-  ASSERT_EQ(curl_result, curl_return_code_login_failed);
+    // Test for Failure
+    ASSERT_EQ(curl_result, curl_return_code_login_failed);
 
-  // Make sure that the file does not exist
-  ASSERT_FALSE(std::filesystem::exists(dir_preparer.local_ftp_root_dir / "test.txt"));
+    // Make sure that the file does not exist
+    ASSERT_FALSE(std::filesystem::exists(dir_preparer.local_ftp_root_dir / "test.txt"));
+  }
+
+  // Upload with a non-existing username
+  {
+    std::string curl_command = std::string("curl -T ")
+                              + " \"" + dir_preparer.local_file_1.string() + "\" "
+                              + " \"ftp://wronguser:pass@localhost:" + std::to_string(ftp_port) + "/test.txt\""
+                              + " -s -S ";
+
+
+    auto curl_result = system_execute(curl_command);
+
+    // Test for Failure
+    ASSERT_EQ(curl_result, curl_return_code_login_failed);
+
+    // Make sure that the file does not exist
+    ASSERT_FALSE(std::filesystem::exists(dir_preparer.local_ftp_root_dir / "test.txt"));
+  }
 }
 #endif
 
@@ -844,8 +922,6 @@ TEST(PermissionTest, AppendToPathThatIsADir)
   ASSERT_TRUE(std::filesystem::is_directory(dir_preparer.local_ftp_root_dir / dir_preparer.ftp_subdir_a_empty));
 }
 #endif
-
-// Rename nonexisting
 
 #if 1
 TEST(PermissionTest, RenameNonExistingFile)
@@ -991,5 +1067,63 @@ TEST(PermissionTest, DeleteNonExistingWithRMD)
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
+}
+#endif
+
+#if 1
+TEST(PermissionTest, DownloadNonexistingFile)
+{
+  const DirPreparer dir_preparer;
+
+  // Create FTP Server
+  fineftp::FtpServer server(0);
+  server.start(1);
+  uint16_t ftp_port = server.getPort();
+
+  server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Create curl string to download a file to the local download dir
+  std::filesystem::path download_path = dir_preparer.local_download_dir / "test.txt";
+  std::string curl_command = std::string("curl -o ")
+                          + " \"" + download_path.string() + "\" "
+                          + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "/nonexisting_file.txt\" "
+                          + " -s -S ";
+
+  auto curl_result = system_execute(curl_command);
+
+  // Test for Failure
+  ASSERT_EQ(curl_result, curl_return_code_ftp_download_failed);
+
+  // Make sure that the file does not exist
+  ASSERT_FALSE(std::filesystem::exists(download_path));
+}
+#endif
+
+#if 1
+TEST(PermissionTest, DownloadPathIsADir)
+{
+  const DirPreparer dir_preparer;
+
+  // Create FTP Server
+  fineftp::FtpServer server(0);
+  server.start(1);
+  uint16_t ftp_port = server.getPort();
+
+  server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Create curl string to download a file to the local download dir
+  std::filesystem::path download_path = dir_preparer.local_download_dir / "test.txt";
+  std::string curl_command = std::string("curl -o ")
+                          + " \"" + download_path.string() + "\" "
+                          + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "/" + dir_preparer.ftp_subdir_a_empty.string() + "\" "
+                          + " -s -S ";
+
+  auto curl_result = system_execute(curl_command);
+
+  // Test for Failure
+  ASSERT_EQ(curl_result, curl_return_code_ftp_download_failed);
+
+  // Make sure that the file does not exist
+  ASSERT_FALSE(std::filesystem::exists(download_path));
 }
 #endif
