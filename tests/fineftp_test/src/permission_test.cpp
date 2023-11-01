@@ -61,6 +61,7 @@ namespace
       // Create local dirs and files
       std::filesystem::create_directories(local_upload_dir);
       std::filesystem::create_directories(local_download_dir);
+      std::filesystem::create_directories(local_curl_output_dir);
       std::ofstream(local_file_1) << local_file_1_content;
       std::ofstream(local_file_2) << local_file_2_content;
 
@@ -86,8 +87,8 @@ namespace
     const std::filesystem::path local_root_dir     = test_working_dir / "local_root";
 
     // FTP dirs and files
-    const std::filesystem::path ftp_subdir_a_empty = "a";
-    const std::filesystem::path ftp_subdir_b_full  = "b";
+    const std::filesystem::path ftp_subdir_a_empty = "dir_a";
+    const std::filesystem::path ftp_subdir_b_full  = "dir_b";
     const std::filesystem::path ftp_file_b1        = ftp_subdir_b_full / "b1.txt";
     const std::filesystem::path ftp_file_b2        = ftp_subdir_b_full / "b2.txt";
 
@@ -95,8 +96,9 @@ namespace
     const std::string ftp_file_b2_content = "HELLO WORLD!!!";
 
     // Local dirs and files
-    const std::filesystem::path local_upload_dir   = local_root_dir   / "upload_dir";
-    const std::filesystem::path local_download_dir = local_root_dir   / "download_dir";
+    const std::filesystem::path local_upload_dir      = local_root_dir   / "upload_dir";
+    const std::filesystem::path local_download_dir    = local_root_dir   / "download_dir";
+    const std::filesystem::path local_curl_output_dir = local_root_dir   / "curl_out";
 
     const std::filesystem::path local_file_1 = local_upload_dir / "1.txt";
     const std::filesystem::path local_file_2 = local_upload_dir / "2.txt";
@@ -732,6 +734,127 @@ TEST(PermissionTest, DownloadFile)
   }
 }
 #endif
+
+#if 1
+TEST(PermissionTest, ListFilesWithLIST)
+{
+  // Listing a directory needs DirList permissions only
+
+  const std::vector<std::pair<fineftp::Permission, bool>> permissions_under_test
+    = {
+        { fineftp::Permission::All, true},
+        { fineftp::Permission::None, false},
+        { fineftp::Permission::DirList, true},
+        { fineftp::Permission::All & (~fineftp::Permission::DirList), false},
+      };
+
+  for (const auto permission_pair : permissions_under_test)
+  {
+    const DirPreparer dir_preparer;
+
+    // Create FTP Server
+    fineftp::FtpServer server(0);
+    server.start(1);
+    uint16_t ftp_port = server.getPort();
+
+    server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), permission_pair.first);
+
+    // Create curl string to LIST the root dir
+    std::filesystem::path curl_output_file = dir_preparer.local_download_dir / "list.txt";
+
+    std::string curl_command = "curl \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\" "
+                                    + " -S -s "
+                                    + " -o \"" + curl_output_file.string() + "\" ";
+
+    auto curl_result = system_execute(curl_command);
+
+
+    std::ifstream ifs(curl_output_file.string());
+    std::string curl_output((std::istreambuf_iterator<char>(ifs)),
+                                (std::istreambuf_iterator<char>()));
+
+    if (permission_pair.second)
+    {
+      // Test for Success
+      ASSERT_EQ(curl_result, 0);
+
+      // Check that the curl_output_file is not empty
+      ASSERT_NE(curl_output, "");
+
+      // Check that the curl_output contains the names of our both directories
+      ASSERT_NE(curl_output.find(dir_preparer.ftp_subdir_a_empty.string()), std::string::npos);
+      ASSERT_NE(curl_output.find(dir_preparer.ftp_subdir_b_full.string()), std::string::npos);
+    }
+    else
+    {
+      // Even when curl gets a Permission Denied for LIST, it still returns success (0).
+      // Check that the curl_output_file is empty
+      ASSERT_EQ(curl_output, "");
+    }
+  }
+}
+#endif
+
+#if 1
+TEST(PermissionTest, ListFilesWithNLST)
+{
+  // Listing a directory needs DirList permissions only
+
+  const std::vector<std::pair<fineftp::Permission, bool>> permissions_under_test
+    = {
+        { fineftp::Permission::All, true},
+        { fineftp::Permission::None, false},
+        { fineftp::Permission::DirList, true},
+        { fineftp::Permission::All & (~fineftp::Permission::DirList), false},
+      };
+
+  for (const auto permission_pair : permissions_under_test)
+  {
+    const DirPreparer dir_preparer;
+
+    // Create FTP Server
+    fineftp::FtpServer server(0);
+    server.start(1);
+    uint16_t ftp_port = server.getPort();
+
+    server.addUser("myuser", "mypass", dir_preparer.local_ftp_root_dir.string(), permission_pair.first);
+
+    // Create curl string to LIST the root dir
+    std::filesystem::path curl_output_file = dir_preparer.local_download_dir / "list.txt";
+
+    std::string curl_command = "curl --list-only \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\" "
+                                    + " -S -s "
+                                    + " -o \"" + curl_output_file.string() + "\" ";
+
+    auto curl_result = system_execute(curl_command);
+
+
+    std::ifstream ifs(curl_output_file.string());
+    std::string curl_output((std::istreambuf_iterator<char>(ifs)),
+                                (std::istreambuf_iterator<char>()));
+
+    if (permission_pair.second)
+    {
+      // Test for Success
+      ASSERT_EQ(curl_result, 0);
+
+      // Check that the curl_output_file is not empty
+      ASSERT_NE(curl_output, "");
+
+      // Check that the curl_output contains the names of our both directories
+      ASSERT_NE(curl_output.find(dir_preparer.ftp_subdir_a_empty.string()), std::string::npos);
+      ASSERT_NE(curl_output.find(dir_preparer.ftp_subdir_b_full.string()), std::string::npos);
+    }
+    else
+    {
+      // Even when curl gets a Permission Denied for LIST, it still returns success (0).
+      // Check that the curl_output_file is empty
+      ASSERT_EQ(curl_output, "");
+    }
+  }
+}
+#endif
+
 
 /////////////////////////////////
 // Commands that always fail
