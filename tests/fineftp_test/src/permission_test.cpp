@@ -14,19 +14,31 @@
 
 namespace
 {
-#ifdef WIN32
+  // https://everything.curl.dev/usingcurl/returns
   constexpr int curl_return_code_quote_command_error = 21;
   constexpr int curl_return_code_upload_failed       = 25;
   constexpr int curl_return_code_login_failed        = 67;
-#else
-  // I have absolutely no idea, why the return codes are shifted by 8 bit on Linux and macOS. 
-  // However, for some reasons they are.
-  // Here are the original return codes, that are only true on Windows:
-  // https://everything.curl.dev/usingcurl/returns
-  constexpr int curl_return_code_quote_command_error = 21 << 8;
-  constexpr int curl_return_code_upload_failed       = 25 << 8;
-  constexpr int curl_return_code_login_failed        = 67 << 8;
+
+  // Custom system command that returns the actual return value of the command, even on POSIX Systems.
+  int system_execute(const std::string& command)
+  {
+    int status = std::system(command.c_str());
+#ifdef WIN32
+    return status;
+#else  // WIN32
+    if (WIFEXITED(status))
+    {
+      // Program has exited normally
+      return WEXITSTATUS(status);
+    }
+    else
+    {
+      // Program has exited abnormally
+      return -1;
+    }
 #endif // WIN32
+
+  }
 
   struct DirPreparer
   {
@@ -121,7 +133,7 @@ TEST(PermissionTest, UploadNewFile)
                             + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "/test.txt\""
                             + " -s -S ";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -181,7 +193,7 @@ TEST(PermissionTest, UploadNewFileToNewDir)
                             + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "/newdir/test.txt\""
                             + " -s -S --ftp-create-dirs";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -243,7 +255,7 @@ TEST(PermissionTest, UploadAndOverwriteFile)
                             + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + ftp_target_path + "\""
                             + " -s -S ";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -306,7 +318,7 @@ TEST(PermissionTest, AppendToExistingFile)
                             + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + ftp_target_path + "\""
                             + " -s -S --append";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -369,7 +381,7 @@ TEST(PermissionTest, AppendToNewFile)
                             + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + ftp_target_path + "\""
                             + " -s -S --append";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -436,7 +448,7 @@ TEST(PermissionTest, RenameFile)
                                     + " -o " + curl_output_file + " "
                                     + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -511,7 +523,7 @@ TEST(PermissionTest, RenameDir)
                                     + " -o " + curl_output_file + " "
                                     + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -572,7 +584,7 @@ TEST(PermissionTest, DeleteFile)
                                     + " -o " + curl_output_file + " "
                                     + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -637,7 +649,7 @@ TEST(PermissionTest, DeleteEmptyDir)
                                     + " -o " + curl_output_file + " "
                                     + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-    auto curl_result = std::system(curl_command.c_str());
+    auto curl_result = system_execute(curl_command);
 
     if (permission_pair.second)
     {
@@ -683,7 +695,7 @@ TEST(PermissionTest, WrongLogin)
                             + " -s -S ";
 
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_login_failed);
@@ -721,7 +733,7 @@ TEST(PermissionTest, DeleteFullDirWithRMD)
                                   + " -o " + curl_output_file + " "
                                   + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
@@ -759,7 +771,7 @@ TEST(PermissionTest, DeleteDirWithDELE)
                                   + " -o " + curl_output_file + " "
                                   + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
@@ -790,7 +802,7 @@ TEST(PermissionTest, UploadToPathThatIsADir)
                             + " -s -S ";
 
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_upload_failed);
@@ -822,7 +834,7 @@ TEST(PermissionTest, AppendToPathThatIsADir)
                             + " -s -S --append";
 
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_upload_failed);
@@ -861,7 +873,7 @@ TEST(PermissionTest, RenameNonExistingFile)
                                   + " -o " + curl_output_file + " "
                                   + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
@@ -897,7 +909,7 @@ TEST(PermissionTest, RenameTargetExistsAlready)
                                   + " -o " + curl_output_file + " "
                                   + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
@@ -943,7 +955,7 @@ TEST(PermissionTest, DeleteNonExistingWithDELE)
                                   + " -o " + curl_output_file + " "
                                   + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
@@ -975,7 +987,7 @@ TEST(PermissionTest, DeleteNonExistingWithRMD)
                                   + " -o " + curl_output_file + " "
                                   + " \"ftp://myuser:mypass@localhost:" + std::to_string(ftp_port) + "\"";
 
-  auto curl_result = std::system(curl_command.c_str());
+  auto curl_result = system_execute(curl_command);
 
   // Test for Failure
   ASSERT_EQ(curl_result, curl_return_code_quote_command_error);
