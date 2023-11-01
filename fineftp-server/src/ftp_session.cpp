@@ -28,6 +28,7 @@ namespace fineftp
     , command_strand_       (io_service)
     , command_socket_       (io_service)
     , data_type_binary_     (false)
+    , shutdown_requested_   (false)
     , ftp_working_directory_("/")
     , data_acceptor_        (io_service)
     , data_socket_strand_   (io_service)
@@ -114,6 +115,16 @@ namespace fineftp
                         if (!ec)
                         {
                           me->command_output_queue_.pop_front();
+
+                          // Handle the QUIT command
+                          if (me->shutdown_requested_)
+                          {
+                            // Properly close command socket
+                            asio::error_code ec_;
+                            me->command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec_);
+                            me->command_socket_.close(ec_);
+                            return;
+                          }
               
                           if (!me->command_output_queue_.empty())
                           {
@@ -249,22 +260,9 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unrecognized command");
     }
 
-    if (last_command_ == "QUIT")
+    // Wait for next command
+    if (!shutdown_requested_)
     {
-      // Close command socket
-      command_strand_.post([me = shared_from_this()]()
-                            {
-          // TODO: Decide when to close the command socket. Doing that here actually breaks sending the "221 Closing command socket" message.
-
-                              // Properly close command socket
-                              //asio::error_code ec;
-                              //me->command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-                              //me->command_socket_.close(ec);
-                            });
-    }
-    else
-    {
-      // Wait for next command
       readFtpCommand();
     }
   }
@@ -372,6 +370,7 @@ namespace fineftp
   void FtpSession::handleFtpCommandQUIT(const std::string& /*param*/)
   {
     logged_in_user_ = nullptr;
+    shutdown_requested_ = true; // This will cause the control connection to be closed after the next message
     sendFtpMessage(FtpReplyCode::SERVICE_CLOSING_CONTROL_CONNECTION, "Connection shutting down");
   }
 

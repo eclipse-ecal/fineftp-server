@@ -12,7 +12,6 @@
 #include <win_str_convert.h>
 #endif // WIN32
 
-
 #if 1
 TEST(FineFTPTest, SimpleUploadDownload) {
   auto test_working_dir = std::filesystem::current_path();

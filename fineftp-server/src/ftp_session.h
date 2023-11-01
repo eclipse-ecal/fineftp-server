@@ -188,6 +188,7 @@ namespace fineftp
     std::string rename_from_path_;
     std::string username_for_login_;
     bool        data_type_binary_;
+    bool        shutdown_requested_; // Set to true when the client sends a QUIT command.
 
     // Current state
     std::string ftp_working_directory_;
