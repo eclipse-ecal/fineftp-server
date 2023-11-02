@@ -27,7 +27,7 @@ ReadableFile::~ReadableFile()
     ::munmap(data_, size_);
   }
 
-  std::lock_guard<std::mutex> lock{guard};
+  const std::lock_guard<std::mutex> lock{guard};
   if (!pth_.empty())
   {
     (void)files.erase(pth_);
@@ -37,7 +37,7 @@ ReadableFile::~ReadableFile()
 std::shared_ptr<ReadableFile> ReadableFile::get(const std::string& pth)
 {
   // See if we already have this file mapped
-  std::lock_guard<std::mutex> lock{guard};
+  const std::lock_guard<std::mutex> lock{guard};
   auto                        fit = files.find(pth);
   if (files.end() != fit)
   {
@@ -54,14 +54,14 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const std::string& pth)
     return {};
   }
 
-  struct stat st;
+  struct stat st {};
   if (-1 == ::fstat(handle, &st))
   {
     ::close(handle);
     return {};
   }
 
-  auto map_start = ::mmap(0, st.st_size, PROT_READ, MAP_SHARED, handle, 0);
+  auto* map_start = ::mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, handle, 0);
   if (MAP_FAILED == map_start)
   {
     ::close(handle);
