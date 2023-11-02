@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "ftp_user.h"
+#include <fineftp/permissions.h>
 
 namespace fineftp
 {

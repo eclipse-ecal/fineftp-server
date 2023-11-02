@@ -1,19 +1,35 @@
 #include "ftp_session.h"
 
-#include <iostream>
-#include <iomanip>
 #include <algorithm>
-#include <map>
-#include <functional>
+#include <cassert> // assert
+#include <cctype>  // std::iscntrl, toupper
+#include <cstddef>
+#include <cstdio>
 #include <fstream>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <memory>
 #include <sstream>
+#include <string>
+#include <sys/types.h>
+#include <vector>
 
+#include <file_man.h>
 
 #include "filesystem.h"
+#include "ftp_message.h"
+#include "user_database.h"
+#include <fineftp/permissions.h>
+
+#include <sys/stat.h>
 
 #ifdef WIN32
-#include <direct.h>
-#include "win_str_convert.h"
+  #include "win_str_convert.h"
+#else
+  #include <unistd.h>
 #endif // WIN32
 
 
@@ -24,13 +40,13 @@ namespace fineftp
     : completion_handler_   (completion_handler)
     , user_database_        (user_database)
     , io_service_           (io_service)
+    , command_strand_       (io_service)
     , command_socket_       (io_service)
-    , command_write_strand_ (io_service)
     , data_type_binary_     (false)
-    , data_acceptor_        (io_service)
-    , data_buffer_strand_   (io_service)
-    , file_rw_strand_       (io_service)
+    , shutdown_requested_   (false)
     , ftp_working_directory_("/")
+    , data_acceptor_        (io_service)
+    , data_socket_strand_   (io_service)
   {
   }
 
@@ -39,6 +55,27 @@ namespace fineftp
 #ifndef NDEBUG
     std::cout << "Ftp Session shutting down" << std::endl;
 #endif // !NDEBUG
+
+    {
+      // Properly close command socket.
+      // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
+      // it and hence no possibility of race conditions on command_socket_.
+      asio::error_code ec;
+      command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+      command_socket_.close(ec);
+    }
+
+    // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
+    // it and hence no possibility of race conditions on data_socket_weak_ptr_.
+    auto data_socket = data_socket_weakptr_.lock();
+    if (data_socket)
+    {
+      // Properly close data socket
+      asio::error_code ec;
+      data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+      data_socket->close(ec);
+    }
+
     completion_handler_();
   }
 
@@ -48,8 +85,8 @@ namespace fineftp
     command_socket_.set_option(asio::ip::tcp::no_delay(true), ec);
     if (ec) std::cerr << "Unable to set socket option tcp::no_delay: " << ec.message() << std::endl;
 
+    command_strand_.post([me = shared_from_this()]() { me->readFtpCommand(); });
     sendFtpMessage(FtpMessage(FtpReplyCode::SERVICE_READY_FOR_NEW_USER, "Welcome to fineFTP Server"));
-    readFtpCommand();
   }
 
   asio::ip::tcp::socket& FtpSession::getSocket()
@@ -68,15 +105,15 @@ namespace fineftp
 
   void FtpSession::sendRawFtpMessage(const std::string& raw_message)
   {
-    command_write_strand_.post([me = shared_from_this(), raw_message]()
-                                {
-                                  const bool write_in_progress = !me->command_output_queue_.empty();
-                                  me->command_output_queue_.push_back(raw_message);
-                                  if (!write_in_progress)
-                                  {
-                                    me->startSendingMessages();
-                                  }
-                                });
+    command_strand_.post([me = shared_from_this(), raw_message]()
+                         {
+                           const bool write_in_progress = !me->command_output_queue_.empty();
+                           me->command_output_queue_.push_back(raw_message);
+                           if (!write_in_progress)
+                           {
+                             me->startSendingMessages();
+                           }
+                         });
   }
 
   void FtpSession::startSendingMessages()
@@ -87,12 +124,22 @@ namespace fineftp
 
     asio::async_write(command_socket_
                     , asio::buffer(command_output_queue_.front())
-                    , command_write_strand_.wrap(
+                    , command_strand_.wrap(
                       [me = shared_from_this()](asio::error_code ec, std::size_t /*bytes_to_transfer*/)
                       {
                         if (!ec)
                         {
                           me->command_output_queue_.pop_front();
+
+                          // Handle the QUIT command
+                          if (me->shutdown_requested_)
+                          {
+                            // Properly close command socket
+                            asio::error_code ec_;
+                            me->command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec_);
+                            me->command_socket_.close(ec_);
+                            return;
+                          }
               
                           if (!me->command_output_queue_.empty())
                           {
@@ -101,7 +148,7 @@ namespace fineftp
                         }
                         else
                         {
-                          std::cerr << "Command write error: " << ec.message() << std::endl;
+                          std::cerr << "Command write error for message " << me->command_output_queue_.front() << ec.message() << std::endl;
                         }
                       }
                     ));
@@ -110,7 +157,7 @@ namespace fineftp
   void FtpSession::readFtpCommand()
   {
     asio::async_read_until(command_socket_, command_input_stream_, "\r\n",
-                        [me = shared_from_this()](asio::error_code ec, std::size_t length)
+                        command_strand_.wrap([me = shared_from_this()](asio::error_code ec, std::size_t length)
                         {
                           if (ec)
                           {
@@ -130,14 +177,15 @@ namespace fineftp
                               me->data_acceptor_.close(ec_);
                             }
 
+                            me->data_socket_strand_.post([me]()
                             {
                               auto data_socket = me->data_socket_weakptr_.lock();
                               if (data_socket)
-                              {
+                              { 
                                 asio::error_code ec_;
                                 data_socket->close(ec_);
                               }
-                            }
+                            });
 
                             return;
                           }
@@ -152,7 +200,7 @@ namespace fineftp
 #endif
 
                           me->handleFtpCommand(packet_string);
-                        });
+                        }));
   }
 
   void FtpSession::handleFtpCommand(const std::string& command)
@@ -227,14 +275,9 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Unrecognized command");
     }
 
-    if (last_command_ == "QUIT")
+    // Wait for next command
+    if (!shutdown_requested_)
     {
-      // Close command socket
-      command_write_strand_.wrap([me = shared_from_this()]() { me->command_socket_.close();  });
-    }
-    else
-    {
-      // Wait for next command
       readFtpCommand();
     }
   }
@@ -342,6 +385,7 @@ namespace fineftp
   void FtpSession::handleFtpCommandQUIT(const std::string& /*param*/)
   {
     logged_in_user_ = nullptr;
+    shutdown_requested_ = true; // This will cause the control connection to be closed after the next message
     sendFtpMessage(FtpReplyCode::SERVICE_CLOSING_CONTROL_CONNECTION, "Connection shutting down");
   }
 
@@ -410,9 +454,9 @@ namespace fineftp
     // Form reply string
     std::stringstream stream;
     stream << "(";
-    for (size_t i = 0; i < 4; i++)
+    for (const char byte : ip_bytes)
     {
-      stream << static_cast<int>(ip_bytes[i]) << ",";
+      stream << static_cast<int>(byte) << ",";
     }
     stream << ((port >> 8) & 0xff) << "," << (port & 0xff) << ")";
 
@@ -480,10 +524,13 @@ namespace fineftp
 
     const std::string local_path = toLocalPath(param);
     
-    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
-    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
+#if defined(WIN32) && !defined(__GNUG__)
+    const auto file = ReadableFile::get(StrConvert::Utf8ToWide(local_path));
+#else
+    const auto file = ReadableFile::get(local_path);
+#endif
 
-    if (!file->file_stream_.good())
+    if (!file)
     {
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
       return;
@@ -500,7 +547,9 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
       return;
     }
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileRead) == 0)
+
+    // We allow the SIZE command both for FileRead and DirList permissions.
+    if (static_cast<int>(logged_in_user_->permissions_ & (Permission::FileRead | Permission::DirList)) == 0)
     {
       sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
       return;
@@ -510,26 +559,29 @@ namespace fineftp
 
     const std::ios::openmode open_mode =
        std::ios::ate | (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
+    std::fstream::pos_type file_size;
+    {
 #if defined(WIN32) && !defined(__GNUG__)
-    std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
+      std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
 #else
-    std::ifstream file(local_path, open_mode);
+      std::ifstream file(local_path, open_mode);
 #endif
 
-    if (!file.good())
-    {
-      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for size retrieval");
-      return;
-    }
+      if (!file.good())
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for size retrieval");
+        return;
+      }
 
-    // RFC 3659 actually states that the returned size should depend on the STRU, MODE, and TYPE and that
-    // the returned size should be exact. We don't comply with this here. The size returned is the
-    // size for TYPE=I.
-    auto file_size = file.tellg();
-    if (std::fstream::pos_type(-1) == file_size)
-    {
-      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error getting file size");
-      return;
+      // RFC 3659 actually states that the returned size should depend on the STRU, MODE, and TYPE and that
+      // the returned size should be exact. We don't comply with this here. The size returned is the
+      // size for TYPE=I.
+      file_size = file.tellg();
+      if (std::fstream::pos_type(-1) == file_size)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error getting file size");
+        return;
+      }
     }
 
     // Form reply string
@@ -580,12 +632,17 @@ namespace fineftp
       }
     }
 
-    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::binary) : (std::ios::out));    
-    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
+    const std::ios::openmode open_mode = (data_type_binary_ ? std::ios::binary : std::ios::openmode{});
+    const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(local_path, open_mode);
 
-    if (!file->file_stream_.good())
+    if (!file->good())
     {
+#ifdef WIN32
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer: " + GetLastErrorStr());
+#else
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+#endif // WIN32
+
       return;
     }
 
@@ -605,33 +662,59 @@ namespace fineftp
       sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN,    "Not logged in");
       return;
     }
-    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileAppend) == 0)
+
+    // Check whether the file exists. This determines whether we need Append or Write Permissions
+    const std::string local_path = toLocalPath(param);
+    auto existing_file_filestatus = Filesystem::FileStatus(local_path);
+
+    if (existing_file_filestatus.isOk())
     {
-      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
-      return;
+      // The file does exist => we need Append Permissions
+      if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileAppend) == 0)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+        return;
+      }
+
+      // Return error message for anything that is not a file
+      if(existing_file_filestatus.type() != Filesystem::FileType::RegularFile)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Pathname is not a file");
+        return;
+      }
     }
+    else
+    {
+      // The file does not exist => we need Write Permissions
+      if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileWrite) == 0)
+      {
+        sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+        return;
+      }
+    }
+
     if (!data_acceptor_.is_open())
     {
       sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
       return;
     }
 
-    const std::string local_path = toLocalPath(param);
+    // If the file did not exist, we create a new one. Otherwise, we open it in append mode.
+    std::ios::openmode open_mode{};
+    if (existing_file_filestatus.isOk())
+      open_mode = (data_type_binary_ ? (std::ios::app | std::ios::binary) : (std::ios::app));
+    else
+      open_mode = (data_type_binary_ ? (std::ios::binary) : std::ios::openmode{});
 
-    auto existing_file_filestatus = Filesystem::FileStatus(local_path);
-    if (!existing_file_filestatus.isOk()
-      || (existing_file_filestatus.type() != Filesystem::FileType::RegularFile))
+    const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(local_path, open_mode);
+
+    if (!file->good())
     {
-      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "File does not exist.");
-      return;
-    }
-
-    const std::ios::openmode open_mode = (data_type_binary_ ? (std::ios::out | std::ios::app | std::ios::binary) : (std::ios::out | std::ios::app));
-    const std::shared_ptr<IoFile> file = std::make_shared<IoFile>(local_path, open_mode);
-
-    if (!file->file_stream_.good())
-    {
+#ifdef WIN32
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer: " + GetLastErrorStr());
+#else
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+#endif // WIN32
       return;
     }
 
@@ -1112,17 +1195,19 @@ namespace fineftp
   void FtpSession::sendDirectoryListing(const std::map<std::string, Filesystem::FileStatus>& directory_content)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
-    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
-                              , [data_socket, directory_content, me = shared_from_this()](auto ec)
+                              , data_socket_strand_.wrap([data_socket, directory_content, me = shared_from_this()](auto ec)
                                 {
                                   if (ec)
                                   {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                     return;
                                   }
-      // TODO: close acceptor after connect?
+   
+                                  me->data_socket_weakptr_ = data_socket;
+
+                                  // TODO: close acceptor after connect?
                                   // Create a Unix-like file list
                                   std::stringstream stream; // NOLINT(misc-const-correctness) Reason: False detection, this cannot be made const
                                   for (const auto& entry : directory_content)
@@ -1147,22 +1232,23 @@ namespace fineftp
                                   // Send the string out
                                   me->addDataToBufferAndSend(dir_listing_rawdata, data_socket);
                                   me->addDataToBufferAndSend(std::shared_ptr<std::vector<char>>(), data_socket);// Nullpointer indicates end of transmission
-                                });
+                                }));
   }
 
   void FtpSession::sendNameList(const std::map<std::string, Filesystem::FileStatus>& directory_content)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
-    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
-                              , [data_socket, directory_content, me = shared_from_this()](auto ec)
+                              , data_socket_strand_.wrap([data_socket, directory_content, me = shared_from_this()](auto ec)
                                 {
                                   if (ec)
                                   {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                     return;
                                   }
+    
+                                  me->data_socket_weakptr_ = data_socket;
 
                                   // Create a file list
                                   std::stringstream stream; // NOLINT(misc-const-correctness) Reason: False detection, this cannot be made const
@@ -1181,57 +1267,51 @@ namespace fineftp
                                   // Send the string out
                                   me->addDataToBufferAndSend(dir_listing_rawdata, data_socket);
                                   me->addDataToBufferAndSend(std::shared_ptr<std::vector<char>>(), data_socket);// Nullpointer indicates end of transmission
-                                });
+                                }));
   }
 
-  void FtpSession::sendFile(const std::shared_ptr<IoFile>& file)
+  void FtpSession::sendFile(const std::shared_ptr<ReadableFile>& file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
-    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
-                              , [data_socket, file, me = shared_from_this()](auto ec)
+                              , data_socket_strand_.wrap([data_socket, file, me = shared_from_this()](auto ec)
                                 {
                                   if (ec)
                                   {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                     return;
                                   }
 
-                                  // Start sending multiple buffers at once
-                                  me->readDataFromFileAndSend(file, data_socket);
-                                  me->readDataFromFileAndSend(file, data_socket);
-                                  me->readDataFromFileAndSend(file, data_socket);
-                                });
+                                  if (file->size() == 0U)
+                                  {
+                                    me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                                  }
+                                  else
+                                  {
+                                    me->data_socket_weakptr_ = data_socket;
 
+                                    // Send the file
+                                    asio::async_write(*data_socket
+                                                    , asio::buffer(file->data(), file->size())
+                                                    , [me, file, data_socket](asio::error_code ec, std::size_t /*bytes_to_transfer*/)
+                                                      {
+                                                        if (ec)
+                                                        {
+                                                          me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
+                                                        }
+                                                        else
+                                                        {
+                                                          me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                                                        }
+                                                      });
+                                  }
+                                }));
   }
 
-  void FtpSession::readDataFromFileAndSend(const std::shared_ptr<IoFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+  void FtpSession::addDataToBufferAndSend(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
-    file_rw_strand_.post([me = shared_from_this(), file, data_socket]()
-                        {
-                          if(file->file_stream_.eof()) return;
-
-                          const std::shared_ptr<std::vector<char>> buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
-                          file->file_stream_.read(buffer->data(), static_cast<std::streamsize>(buffer->size()));
-                          auto bytes_read = file->file_stream_.gcount();
-                          buffer->resize(static_cast<size_t>(bytes_read));
-
-                          if (!file->file_stream_.eof())
-                          {
-                            me->addDataToBufferAndSend(buffer, data_socket, [me, file, data_socket]() {me->readDataFromFileAndSend(file, data_socket); });
-                          }
-                          else
-                          {
-                            me->addDataToBufferAndSend(buffer, data_socket);
-                            me->addDataToBufferAndSend(std::shared_ptr<std::vector<char>>(nullptr), data_socket);
-                          }
-                        });
-  }
-
-  void FtpSession::addDataToBufferAndSend(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<asio::ip::tcp::socket>& data_socket, const std::function<void(void)>& fetch_more)
-  {
-    data_buffer_strand_.post([me = shared_from_this(), data, data_socket, fetch_more]()
+    data_socket_strand_.post([me = shared_from_this(), data, data_socket]()
                             {
                               const bool write_in_progress = (!me->data_buffer_.empty());
 
@@ -1239,82 +1319,88 @@ namespace fineftp
 
                               if (!write_in_progress)
                               {
-                                me->writeDataToSocket(data_socket, fetch_more);
+                                me->writeDataToSocket(data_socket);
                               }
                             });
   }
 
-  void FtpSession::writeDataToSocket(const std::shared_ptr<asio::ip::tcp::socket>& data_socket, const std::function<void(void)>& fetch_more)
+  void FtpSession::writeDataToSocket(const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
-    data_buffer_strand_.post(
-                    [me = shared_from_this(), data_socket, fetch_more]()
-                    {
-                      auto data = me->data_buffer_.front();
+    data_socket_strand_.post(
+      [me = shared_from_this(), data_socket]()
+      {
+        auto data = me->data_buffer_.front();
 
-                      if (data)
-                      {
-                        // Send out the buffer
-                        asio::async_write(*data_socket
-                                          , asio::buffer(*data)
-                                          , me->data_buffer_strand_.wrap([me, data_socket, data, fetch_more](asio::error_code ec, std::size_t /*bytes_to_transfer*/)
-                                            {
-                                              me->data_buffer_.pop_front();
+        if (data)
+        {
+          // Send out the buffer
+          asio::async_write(*data_socket
+                            , asio::buffer(*data)
+                            , me->data_socket_strand_.wrap([me, data, data_socket](asio::error_code ec, std::size_t /*bytes_to_transfer*/)
+                              {
+                                me->data_buffer_.pop_front();
 
-                                              if (ec)
-                                              {
-                                                std::cerr << "Data write error: " << ec.message() << std::endl;
-                                                return;
-                                              }
+                                if (ec)
+                                {
+                                  std::cerr << "Data write error: " << ec.message() << std::endl;
+                                  return;
+                                }
 
-                                              fetch_more();
+                                if (!me->data_buffer_.empty())
+                                {
+                                  me->writeDataToSocket(data_socket);
+                                }
+                              }
+                              ));
+        }
+        else
+        {
+          // we got to the end of transmission
+          me->data_buffer_.pop_front();
 
-                                              if (!me->data_buffer_.empty())
-                                              {
-                                                me->writeDataToSocket(data_socket, fetch_more);
-                                              }
-                                            }
-                                            ));
-                      }
-                      else
-                      {
-                        // we got to the end of transmission
-                        me->data_buffer_.pop_front();
-                        me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
-                      }
-                    }
-                    );
+          // Close Data Socket properly
+          {
+            asio::error_code ec;
+            data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+            data_socket->close(ec);
+          }
+
+          me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+        }
+      });
   }
 
   ////////////////////////////////////////////////////////
   // FTP data-socket receive
   ////////////////////////////////////////////////////////
 
-  void FtpSession::receiveFile(const std::shared_ptr<IoFile>& file)
+  void FtpSession::receiveFile(const std::shared_ptr<WriteableFile>& file)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
-    data_socket_weakptr_ = data_socket;
 
     data_acceptor_.async_accept(*data_socket
-                              , [data_socket, file, me = shared_from_this()](auto ec)
+                              , data_socket_strand_.wrap([data_socket, file, me = shared_from_this()](auto ec)
                                 {
                                   if (ec)
                                   {
+                                    std::cerr << "Data transfer aborted: " << ec.message() << std::endl;
                                     me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
                                     return;
                                   }
 
+                                  me->data_socket_weakptr_ = data_socket;
                                   me->receiveDataFromSocketAndWriteToFile(file, data_socket);
-                                });
+                                }));
   }
 
-  void FtpSession::receiveDataFromSocketAndWriteToFile(const std::shared_ptr<IoFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+  void FtpSession::receiveDataFromSocketAndWriteToFile(const std::shared_ptr<WriteableFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
     const std::shared_ptr<std::vector<char>> buffer = std::make_shared<std::vector<char>>(1024 * 1024 * 1);
       
     asio::async_read(*data_socket
                     , asio::buffer(*buffer)
                     , asio::transfer_at_least(buffer->size())
-                    , [me = shared_from_this(), file, data_socket, buffer](asio::error_code ec, std::size_t length)
+                    , data_socket_strand_.wrap([me = shared_from_this(), file, data_socket, buffer](asio::error_code ec, std::size_t length)
                       {
                         buffer->resize(length);
                         if (ec)
@@ -1323,34 +1409,33 @@ namespace fineftp
                           {
                             me->writeDataToFile(buffer, file);
                           }
-                          me->endDataReceiving(file);
+                          me->endDataReceiving(file, data_socket);
                           return;
                         }
                         else if (length > 0)
                         {
                           me->writeDataToFile(buffer, file, [me, file, data_socket]() { me->receiveDataFromSocketAndWriteToFile(file, data_socket); });
                         }
-                      });
+                      }));
   }
 
 
-  void FtpSession::writeDataToFile(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<IoFile>& file, const std::function<void(void)>& fetch_more)
+  void FtpSession::writeDataToFile(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<WriteableFile>& file, const std::function<void(void)>& fetch_more)
   {
-    file_rw_strand_.post([me = shared_from_this(), data, file, fetch_more]
-                        {
-                          fetch_more();
-                          file->file_stream_.write(data->data(), static_cast<std::streamsize>(data->size()));
-                        });
+    fetch_more();
+    file->write(data->data(), data->size());
   }
 
-  void FtpSession::endDataReceiving(const std::shared_ptr<IoFile>& file)
+  void FtpSession::endDataReceiving(const std::shared_ptr<WriteableFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
-    file_rw_strand_.post([me = shared_from_this(), file]
-                        {
-                          file->file_stream_.flush();
-                          file->file_stream_.close();
-                          me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
-                        });
+    data_socket_strand_.post([me = shared_from_this(), file, data_socket]()
+                             {
+                               file->close();
+                               me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                               asio::error_code ec;
+                               data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+                               data_socket->close();
+                             });
   }
 
   ////////////////////////////////////////////////////////
@@ -1363,7 +1448,8 @@ namespace fineftp
 
     if (!rel_or_abs_ftp_path.empty() && (rel_or_abs_ftp_path[0] == '/'))
     {
-      absolute_ftp_path = rel_or_abs_ftp_path;
+      // Absolut path is given. We still clean it to make sure it doesn't contain any ".." that go above the root directory.
+      absolute_ftp_path = fineftp::Filesystem::cleanPath(rel_or_abs_ftp_path, false, '/');
     }
     else
     {
@@ -1377,7 +1463,9 @@ namespace fineftp
   {
     assert(logged_in_user_);
 
-    // First make the ftp path absolute if it isn't already
+    // First make the ftp path absolute if it isn't already. This also cleans
+    // the path and makes sure that it doesn't contain any ".." that go above
+    // the root directory.
     const std::string absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
 
     // Now map it to the local filesystem

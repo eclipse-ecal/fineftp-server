@@ -1,20 +1,35 @@
 #include "filesystem.h"
 
-#include <list>
-#include <sstream>
-#include <mutex>
-#include <iomanip>
 #include <array>
+#include <cstdint>
+#include <iomanip>
+#include <list>
+#include <mutex> // IWYU pragma: keep
+#include <sstream>
+
+#include <chrono>
+#include <ctime>
+#include <iostream>
+#include <map>
+#include <regex>
+#include <string>
+
+#include <sys/stat.h>
 
 #ifdef WIN32
 
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <win_str_convert.h>
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
+
+  #define WIN32_LEAN_AND_MEAN
+
+  #include <windows.h>
+  #include <win_str_convert.h>
 
 #else // WIN32
 
+#include <cerrno>
 #include <cstring>
 #include <dirent.h>
 
@@ -311,7 +326,7 @@ namespace Filesystem
     return content;
   }
 
-  std::string cleanPath(const std::string& path, bool windows_path, const char output_separator)
+  std::string cleanPath(const std::string& path, bool path_is_windows_path, const char output_separator)
   {
     if (path.empty())
     {
@@ -322,7 +337,7 @@ namespace Filesystem
 
     std::string absolute_root;
 
-    if (windows_path)
+    if (path_is_windows_path)
     {
       /* On Windows, a root folder can be:
        *    C:\
@@ -369,7 +384,7 @@ namespace Filesystem
 
       do
       {
-        if (windows_path)
+        if (path_is_windows_path)
           end = path.find_first_of("/\\", start);
         else
           end = path.find_first_of('/', start);
@@ -429,7 +444,7 @@ namespace Filesystem
     std::stringstream path_ss;
     path_ss << absolute_root;
 
-    if (windows_path && !absolute_root.empty())
+    if (path_is_windows_path && !absolute_root.empty())
     {
       path_ss << output_separator; // The windows drive must be followed by a separator. When referencing a network drive.
     }
@@ -451,13 +466,14 @@ namespace Filesystem
   std::string cleanPathNative(const std::string& path)
   {
 #ifdef WIN32
-    constexpr bool windows_path = true;
+    constexpr bool path_is_windows_path = true;
     constexpr char separator = '\\';
 #else // WIN32
-    constexpr bool windows_path = false;
+    constexpr bool path_is_windows_path = false;
     constexpr char separator = '/';
 #endif // WIN32
-    return cleanPath(path, windows_path, separator);
+    return cleanPath(path, path_is_windows_path, separator);
   }
+
 }
 }

@@ -4,11 +4,30 @@
 #  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 #    This warns about memcpy and wants us to use memcpy_s, which is not available in our gcc setup.
 #
+#  -cppcoreguidelines-avoid-const-or-ref-data-members
+#    I seriously don't understand why I shouldn't make a member variable const,
+#    if I want to prevent people from changing it. I actually consider it good
+#    style to do that
+#
 #  -cppcoreguidelines-pro-type-vararg
 #    This forbids using functions like printf, snprintf etc. We would like to use those either way.
 #
 #  -misc-no-recursion
 #    Recursion with functions can be an elegant way of solving recursive problems
+#
+#  -misc-include-cleaner
+#    I would love to keep this option, but it would force me to include all
+#    Win32 headers by hand instead of just including Windows.h. It would also force
+#    me to copy the entire content of <asio/asio.hpp> into all of my cpp files and
+#    there is no way that this would improve my code.
+#
+#  -performance-avoid-endl
+#    std::endl seems to be a good idea often, as it also flushes the stream buffer
+#
+#  -bugprone-unused-return-value
+#    asio returns error codes as parameter AND return value. The paraemter is
+#    necessary to get teh error-code at all, but the return value is absolutely
+#    useless in that case.
 #
 # These checks have been disabled to keep compatibility with C++14:
 #  -modernize-concat-nested-namespaces
@@ -23,9 +42,13 @@ Checks: "-*,
   -bugprone-easily-swappable-parameters,
   -bugprone-implicit-widening-of-multiplication-result,
   -bugprone-narrowing-conversions,
+  -bugprone-unused-return-value,
   
   cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -cppcoreguidelines-avoid-do-while,
   -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-macro-usage,
   -cppcoreguidelines-narrowing-conversions,
   -cppcoreguidelines-non-private-member-variables-in-classes,
@@ -35,19 +58,22 @@ Checks: "-*,
   -cppcoreguidelines-pro-type-reinterpret-cast,
   
   misc-*,
+  -misc-include-cleaner,
   -misc-non-private-member-variables-in-classes,
   -misc-no-recursion,
   
   modernize-*,
-  -modernize-pass-by-value,
-  -modernize-use-trailing-return-type,
-  -modernize-use-auto,
-  -modernize-concat-nested-namespaces,
-  -modernize-return-braced-init-list,
-  -modernize-use-nodiscard,
   -modernize-avoid-bind,
+  -modernize-concat-nested-namespaces,
+  -modernize-pass-by-value,
+  -modernize-raw-string-literal,
+  -modernize-return-braced-init-list,
+  -modernize-use-auto,
+  -modernize-use-nodiscard,
+  -modernize-use-trailing-return-type,
   
   performance-*,
+  -performance-avoid-endl
   
   readability-*,
   -readability-braces-around-statements,

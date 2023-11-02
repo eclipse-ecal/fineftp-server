@@ -1,9 +1,13 @@
 #pragma once
 
-#include <asio.hpp>
+#include <asio.hpp> // IWYU pragma: keep
 
 #include <deque>
-#include <fstream>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "ftp_message.h"
 
@@ -11,44 +15,19 @@
 #include "user_database.h"
 #include "ftp_user.h"
 
-#include "win_str_convert.h"
+#ifdef WIN32
+  #include "win_str_convert.h"
+#endif // WIN32
 
 namespace fineftp
 {
+  class ReadableFile;
+  class WriteableFile;
+
   class FtpSession
     : public std::enable_shared_from_this<FtpSession>
   {
   private:
-    struct IoFile
-    {
-      IoFile(const std::string& filename, std::ios::openmode mode)
-#if defined(WIN32) && !defined(__GNUG__)
-        : file_stream_(StrConvert::Utf8ToWide(filename), mode)
-#else
-        : file_stream_(filename, mode)
-#endif
-        , stream_buffer_(1024 * 1024)
-      {
-        file_stream_.rdbuf()->pubsetbuf(stream_buffer_.data(), static_cast<std::streamsize>(stream_buffer_.size()));
-      }
-
-      // Copy
-      IoFile(const IoFile&)            = delete;
-      IoFile& operator=(const IoFile&) = delete;
-
-      // Move disabled (as we are storing the shared_from_this() pointer in lambda captures)
-      IoFile& operator=(IoFile&&)      = delete;
-      IoFile(IoFile&&)                 = delete;
-
-      ~IoFile()
-      {
-        file_stream_.flush();
-        file_stream_.close();
-      }
-
-      std::fstream      file_stream_;
-      std::vector<char> stream_buffer_;
-    };
 
   ////////////////////////////////////////////////////////
   // Public API
@@ -138,32 +117,28 @@ namespace fineftp
     void sendDirectoryListing   (const std::map<std::string, Filesystem::FileStatus>& directory_content);
     void sendNameList           (const std::map<std::string, Filesystem::FileStatus>& directory_content);
 
-    void sendFile               (const std::shared_ptr<IoFile>&                file);
-
-    void readDataFromFileAndSend(const std::shared_ptr<IoFile>&                file
-                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
+    void sendFile               (const std::shared_ptr<ReadableFile>&          file);
 
     void addDataToBufferAndSend (const std::shared_ptr<std::vector<char>>&     data
-                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket
-                               , const std::function<void(void)>&              fetch_more = []() {return; });
+                               , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
-    void writeDataToSocket      (const std::shared_ptr<asio::ip::tcp::socket>& data_socket
-                               , const std::function<void(void)>&              fetch_more);
+    void writeDataToSocket      (const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
   ////////////////////////////////////////////////////////
   // FTP data-socket receive
   ////////////////////////////////////////////////////////
   private:
-    void receiveFile(const std::shared_ptr<IoFile>& file);
+    void receiveFile(const std::shared_ptr<WriteableFile>& file);
 
-    void receiveDataFromSocketAndWriteToFile(const std::shared_ptr<IoFile>&                file
+    void receiveDataFromSocketAndWriteToFile(const std::shared_ptr<WriteableFile>&         file
                                            , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
     void writeDataToFile(const std::shared_ptr<std::vector<char>>& data
-                       , const std::shared_ptr<IoFile>&            file
+                       , const std::shared_ptr<WriteableFile>&     file
                        , const std::function<void(void)>&          fetch_more = []() {return; });
 
-    void endDataReceiving(const std::shared_ptr<IoFile>& file);
+    void endDataReceiving(const std::shared_ptr<WriteableFile>& file
+                        , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
   ////////////////////////////////////////////////////////
   // Helpers
@@ -209,25 +184,28 @@ namespace fineftp
     // "Global" io service
     asio::io_service&        io_service_;
 
-    // Command Socket
+    // Command Socket.
+    // Note that the command_strand_ is used to serialize access to all of the 9 member variables following it.
+    asio::io_service::strand command_strand_;
     asio::ip::tcp::socket    command_socket_;
-    asio::io_service::strand command_write_strand_;
     asio::streambuf          command_input_stream_;
     std::deque<std::string>  command_output_queue_;
 
     std::string last_command_;
     std::string rename_from_path_;
     std::string username_for_login_;
-
-    // Data Socket (=> passive mode)
-    bool                                           data_type_binary_;
-    asio::ip::tcp::acceptor                        data_acceptor_;
-    std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
-    std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
-    asio::io_service::strand                       data_buffer_strand_;
-    asio::io_service::strand                       file_rw_strand_;
+    bool        data_type_binary_;
+    bool        shutdown_requested_; // Set to true when the client sends a QUIT command.
 
     // Current state
     std::string ftp_working_directory_;
+
+    // Data Socket (=> passive mode)
+    asio::ip::tcp::acceptor                        data_acceptor_;
+
+    // Note that the data_socket_strand_ is used to serialize access to the 2 member variables following it.
+    asio::io_service::strand                       data_socket_strand_;
+    std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
+    std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
   };
 }

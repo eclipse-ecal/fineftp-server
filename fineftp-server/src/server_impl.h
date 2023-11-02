@@ -1,15 +1,18 @@
 #pragma once
 
-#include <vector>
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <thread>
-#include <atomic>
+#include <vector>
 
-#include <asio.hpp>
+#include <asio.hpp> // IWYU pragma: keep
 
+#include <fineftp/permissions.h>
 #include <ftp_session.h>
 
-#include <ftp_user.h>
 #include <user_database.h>
 
 namespace fineftp

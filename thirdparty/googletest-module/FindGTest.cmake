@@ -1,0 +1,1 @@
+set(GTest_FOUND TRUE CACHE BOOL "Found Google Test" FORCE)
