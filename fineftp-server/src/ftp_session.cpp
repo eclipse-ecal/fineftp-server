@@ -15,7 +15,6 @@
 #include <sstream>
 #include <string>
 #include <sys/types.h>
-#include <unistd.h>
 #include <vector>
 
 #include <file_man.h>
@@ -28,7 +27,9 @@
 #include <sys/stat.h>
 
 #ifdef WIN32
-#include "win_str_convert.h"
+  #include "win_str_convert.h"
+#else
+  #include <unistd.h>
 #endif // WIN32
 
 
