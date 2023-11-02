@@ -7,13 +7,21 @@
 #include <functional>
 #include <fstream>
 #include <sstream>
+#include <string>
+#include <vector>
+#include <memory>
+#include <cstddef>
+#include <iterator>
+#include <cassert> // assert
+#include <cctype>  // std::iscntrl, toupper
 
 #include <file_man.h>
 
 #include "filesystem.h"
+#include <fineftp/permissions.h>
+#include "ftp_message.h"
 
 #ifdef WIN32
-#include <direct.h>
 #include "win_str_convert.h"
 #endif // WIN32
 
@@ -439,9 +447,9 @@ namespace fineftp
     // Form reply string
     std::stringstream stream;
     stream << "(";
-    for (size_t i = 0; i < 4; i++)
+    for (const char byte : ip_bytes)
     {
-      stream << static_cast<int>(ip_bytes[i]) << ",";
+      stream << static_cast<int>(byte) << ",";
     }
     stream << ((port >> 8) & 0xff) << "," << (port & 0xff) << ")";
 
@@ -685,7 +693,7 @@ namespace fineftp
     }
 
     // If the file did not exist, we create a new one. Otherwise, we open it in append mode.
-    std::ios::openmode open_mode;
+    std::ios::openmode open_mode{};
     if (existing_file_filestatus.isOk())
       open_mode = (data_type_binary_ ? (std::ios::app | std::ios::binary) : (std::ios::app));
     else
@@ -1268,7 +1276,7 @@ namespace fineftp
                                     return;
                                   }
 
-                                  if (file->size() == 0u)
+                                  if (file->size() == 0U)
                                   {
                                     me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                                   }
@@ -1451,7 +1459,7 @@ namespace fineftp
     // First make the ftp path absolute if it isn't already. This also cleans
     // the path and makes sure that it doesn't contain any ".." that go above
     // the root directory.
-    std::string absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
+    const std::string absolute_ftp_path = toAbsoluteFtpPath(ftp_path);
 
     // Now map it to the local filesystem
     return fineftp::Filesystem::cleanPathNative(logged_in_user_->local_root_path_ + "/" + absolute_ftp_path);

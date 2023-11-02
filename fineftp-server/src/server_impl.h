@@ -4,10 +4,13 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <cstdint>
+#include <cstddef>
 
 #include <asio.hpp>
 
 #include <ftp_session.h>
+#include <fineftp/permissions.h>
 
 #include <ftp_user.h>
 #include <user_database.h>

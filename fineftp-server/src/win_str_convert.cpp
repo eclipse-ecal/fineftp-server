@@ -1,11 +1,11 @@
-#include "win_str_convert.h"
+#include "win_str_convert.h" // IWYU pragma: associated
 
 #ifdef WIN32
   #define WIN32_LEAN_AND_MEAN
   #ifndef NOMINMAX
     #define NOMINMAX
   #endif
-  #include <windows.h>
+  #include <windows.h> // IWYU pragma: keep
 #endif // WIN32
 
 #include <string>

@@ -2,11 +2,14 @@
 
 #include <memory>
 #include <string>
+#include <cstdint>
 
+// IWYU pragma: begin_exports
 #include <fineftp/permissions.h>
 
 #include <fineftp/fineftp_version.h>
 #include <fineftp/fineftp_export.h>
+// IWYU pragma: end_exports
 
 namespace fineftp
 {

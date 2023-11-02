@@ -1,7 +1,14 @@
 #include <fineftp/server.h>
 
 #include "server_impl.h"
+
 #include <memory>
+#include <string>
+#include <cstdint> // uint16_t
+#include <cstddef> // size_t
+#include <cassert> // assert
+
+#include <fineftp/permissions.h>
 
 namespace fineftp
 {

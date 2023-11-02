@@ -9,7 +9,7 @@ find_package(fineftp REQUIRED)
 set(FINEFTP_SERVER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../fineftp-server/src")
 
 set(sources
-  src/fineftp_test.cpp
+  src/fineftp_stresstest.cpp
   src/permission_test.cpp
 )
 set(fineftp_server_sources

@@ -1,0 +1,9 @@
+---
+# 1)disable the #if 1 warning that I am using to quickly disable and enable tests
+# 2) disable the warning about concationation of strings. I just don't care about performance for googletests and think that it is more readable this way.
+
+Checks: "-readability-avoid-unconditional-preprocessor-if,
+         -performance-inefficient-string-concatenation,
+"
+
+InheritParentConfig: true

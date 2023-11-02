@@ -40,9 +40,11 @@ set(sources
 
 if (WIN32)
     list(APPEND sources src/win32/file_man.cpp)
+    list(APPEND sources src/win32/file_man.h)
     set(platform_include src/win32)
 else()
     list(APPEND sources src/unix/file_man.cpp)
+    list(APPEND sources src/unix/file_man.h)
     set(platform_include src/unix)
 endif()
 

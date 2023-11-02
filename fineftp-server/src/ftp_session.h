@@ -3,6 +3,10 @@
 #include <asio.hpp>
 
 #include <deque>
+#include <string>
+#include <memory>
+#include <functional>
+
 
 #include "ftp_message.h"
 

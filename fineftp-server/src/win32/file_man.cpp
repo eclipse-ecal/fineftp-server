@@ -28,7 +28,7 @@ ReadableFile::~ReadableFile()
     ::CloseHandle(handle_);
   }
 
-  std::lock_guard<std::mutex> lock{guard};
+  const std::lock_guard<std::mutex> lock{guard};
   if (!pth_.empty())
   {
     (void)files.erase(pth_);
@@ -53,7 +53,7 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
   auto&& s = os.str();
 
   // See if we already have this file mapped
-  std::lock_guard<std::mutex> lock{guard};
+  const std::lock_guard<std::mutex> lock{guard};
   auto                        fit = files.find(s);
   if (files.end() != fit)
   {
@@ -65,11 +65,11 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
   }
 
 #if !defined(__GNUG__)
-  auto handle =
-    ::CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  HANDLE handle =
+    ::CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 #else
   auto handle =
-    ::CreateFileA(s.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    ::CreateFileA(s.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 #endif
   if (INVALID_HANDLE_VALUE == handle)
   {
@@ -83,14 +83,14 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& pth)
     return {};
   }
 
-  auto map_handle = ::CreateFileMapping(handle, nullptr, PAGE_READONLY, sz.HighPart, sz.LowPart, nullptr);
-  if (INVALID_HANDLE_VALUE == map_handle)
+  auto* map_handle = ::CreateFileMapping(handle, nullptr, PAGE_READONLY, sz.HighPart, sz.LowPart, nullptr);
+  if ((map_handle == INVALID_HANDLE_VALUE) || (map_handle == nullptr))
   {
     ::CloseHandle(handle);
     return {};
   }
 
-  auto map_start = ::MapViewOfFile(map_handle, FILE_MAP_READ, 0, 0, sz.QuadPart);
+  auto* map_start = ::MapViewOfFile(map_handle, FILE_MAP_READ, 0, 0, sz.QuadPart);
   if (nullptr == map_start)
   {
     ::CloseHandle(map_handle);
@@ -114,13 +114,13 @@ WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mod
   // binary files as they come in with the right line endings.
 
   DWORD dwDesiredAccess = GENERIC_WRITE;  // It's always a writeable file
-  if (mode & std::ios::app)
+  if (bool(mode & std::ios::app))
   {
     dwDesiredAccess |= FILE_APPEND_DATA;  // Append to the file
   }
 
   DWORD dwCreationDisposition = 0;
-  if (mode & std::ios::app)
+  if (bool(mode & std::ios::app))
   {
     dwCreationDisposition = OPEN_EXISTING;   // Append => Open existing file
   }
@@ -131,9 +131,9 @@ WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mod
 
 #if !defined(__GNUG__)
   auto wfilename = StrConvert::Utf8ToWide(filename);
-  handle_ = ::CreateFileW(wfilename.c_str(), dwDesiredAccess, FILE_SHARE_DELETE, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
+  handle_ = ::CreateFileW(wfilename.c_str(), dwDesiredAccess, FILE_SHARE_DELETE, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
 #else
-  handle_ = ::CreateFileA(filename.c_str(), dwDesiredAccess, FILE_SHARE_DELETE, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
+  handle_ = ::CreateFileA(filename.c_str(), dwDesiredAccess, FILE_SHARE_DELETE, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
 #endif
 
   if (INVALID_HANDLE_VALUE != handle_ && (mode & std::ios::app) == std::ios::app)
@@ -161,7 +161,7 @@ void WriteableFile::close()
   
 void WriteableFile::write(const char* data, std::size_t sz)
 {
-  (void)::WriteFile(handle_, data, sz, nullptr, nullptr);
+  (void)::WriteFile(handle_, data, static_cast<DWORD>(sz), nullptr, nullptr);
 }
 
 }

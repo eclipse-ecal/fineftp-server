@@ -6,6 +6,16 @@
 #include <iomanip>
 #include <array>
 
+#include <chrono>
+#include <string>
+#include <iostream>
+#include <map>
+#include <algorithm>
+#include <regex>
+#include <ctime>
+
+#include <sys/stat.h>
+
 #ifdef WIN32
 
 #ifndef NOMINMAX

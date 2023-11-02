@@ -4,6 +4,14 @@
 
 #include <memory>
 #include <iostream>
+#include <string>
+#include <thread>
+#include <cstdint>
+#include <cstddef>
+
+#include <fineftp/permissions.h>
+
+#include <asio.hpp> // IWYU pragma: keep
 
 namespace fineftp
 {
