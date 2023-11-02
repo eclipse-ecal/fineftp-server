@@ -1,32 +1,35 @@
 #include "filesystem.h"
 
-#include <list>
-#include <sstream>
-#include <mutex>
-#include <iomanip>
 #include <array>
+#include <cstdint>
+#include <iomanip>
+#include <list>
+#include <mutex> // IWYU pragma: keep
+#include <sstream>
 
 #include <chrono>
-#include <string>
+#include <ctime>
 #include <iostream>
 #include <map>
-#include <algorithm>
 #include <regex>
-#include <ctime>
+#include <string>
 
 #include <sys/stat.h>
 
 #ifdef WIN32
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <win_str_convert.h>
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
+
+  #define WIN32_LEAN_AND_MEAN
+
+  #include <windows.h>
+  #include <win_str_convert.h>
 
 #else // WIN32
 
+#include <cerrno>
 #include <cstring>
 #include <dirent.h>
 

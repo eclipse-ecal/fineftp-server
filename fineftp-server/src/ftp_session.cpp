@@ -1,25 +1,31 @@
 #include "ftp_session.h"
 
-#include <iostream>
-#include <iomanip>
 #include <algorithm>
-#include <map>
-#include <functional>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <memory>
-#include <cstddef>
-#include <iterator>
 #include <cassert> // assert
 #include <cctype>  // std::iscntrl, toupper
+#include <cstddef>
+#include <cstdio>
+#include <fstream>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <sys/types.h>
+#include <unistd.h>
+#include <vector>
 
 #include <file_man.h>
 
 #include "filesystem.h"
-#include <fineftp/permissions.h>
 #include "ftp_message.h"
+#include "user_database.h"
+#include <fineftp/permissions.h>
+
+#include <sys/stat.h>
 
 #ifdef WIN32
 #include "win_str_convert.h"

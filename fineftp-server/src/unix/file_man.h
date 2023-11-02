@@ -3,8 +3,10 @@
 #ifndef FINEFTP_SERVER_SRC_UNIX_FILE_MAN_H_
 #define FINEFTP_SERVER_SRC_UNIX_FILE_MAN_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <ios>
 #include <memory>
 #include <string>
 #include <vector>

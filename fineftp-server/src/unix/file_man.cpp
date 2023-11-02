@@ -2,12 +2,14 @@
 
 #include "file_man.h"
 
+#include <cstdint>
 #include <fcntl.h>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sstream>
 #include <unistd.h>
 
 namespace fineftp

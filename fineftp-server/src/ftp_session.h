@@ -1,12 +1,13 @@
 #pragma once
 
-#include <asio.hpp>
+#include <asio.hpp> // IWYU pragma: keep
 
 #include <deque>
-#include <string>
-#include <memory>
 #include <functional>
-
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "ftp_message.h"
 
@@ -14,7 +15,9 @@
 #include "user_database.h"
 #include "ftp_user.h"
 
-#include "win_str_convert.h"
+#ifdef WIN32
+  #include "win_str_convert.h"
+#endif // WIN32
 
 namespace fineftp
 {
