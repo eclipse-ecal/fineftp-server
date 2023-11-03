@@ -454,9 +454,9 @@ namespace fineftp
     // Form reply string
     std::stringstream stream;
     stream << "(";
-    for (const char byte : ip_bytes)
+    for (const auto byte : ip_bytes)
     {
-      stream << static_cast<int>(byte) << ",";
+      stream << static_cast<unsigned int>(byte) << ",";
     }
     stream << ((port >> 8) & 0xff) << "," << (port & 0xff) << ")";
 
