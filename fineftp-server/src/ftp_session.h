@@ -207,5 +207,7 @@ namespace fineftp
     asio::io_service::strand                       data_socket_strand_;
     std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
     std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
+
+    asio::steady_timer                             timer_;
   };
 }

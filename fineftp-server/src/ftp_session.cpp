@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert> // assert
 #include <cctype>  // std::iscntrl, toupper
+#include <chrono>
 #include <cstddef>
 #include <cstdio>
 #include <fstream>
@@ -47,6 +48,7 @@ namespace fineftp
     , ftp_working_directory_("/")
     , data_acceptor_        (io_service)
     , data_socket_strand_   (io_service)
+    , timer_                (io_service)
   {
   }
 
@@ -1302,7 +1304,26 @@ namespace fineftp
                                                         }
                                                         else
                                                         {
-                                                          me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                                                          // Close Data Socket properly
+                                                          {
+                                                            asio::error_code ec;
+                                                            data_socket->shutdown(asio::socket_base::shutdown_both, ec);
+                                                            data_socket->close(ec);
+                                                          }
+
+                                                          // Ugly work-around:
+                                                          // An FTP client implementation has been observed to close the data connection
+                                                          // as soon as it receives the 226 status code - even though it hasn't received
+                                                          // all data, yet. To improve interoperability with such buggy clients, sending
+                                                          // of the 226 status code is delayed a bit.
+                                                          me->timer_.expires_after(std::chrono::milliseconds{100});
+                                                          me->timer_.async_wait(me->data_socket_strand_.wrap([me](const asio::error_code& ec)
+                                                                                {
+                                                                                  if (ec != asio::error::operation_aborted)
+                                                                                  {
+                                                                                    me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
+                                                                                  }
+                                                                                }));
                                                         }
                                                       });
                                   }
