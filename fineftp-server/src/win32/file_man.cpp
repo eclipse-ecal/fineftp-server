@@ -129,6 +129,7 @@ WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mod
     dwCreationDisposition = CREATE_ALWAYS;   // Not Append => Create new file
   }
 
+  // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
 #if !defined(__GNUG__)
   auto wfilename = StrConvert::Utf8ToWide(filename);
   handle_ = ::CreateFileW(wfilename.c_str(), dwDesiredAccess, FILE_SHARE_DELETE, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -161,7 +162,8 @@ void WriteableFile::close()
   
 void WriteableFile::write(const char* data, std::size_t sz)
 {
-  (void)::WriteFile(handle_, data, static_cast<DWORD>(sz), nullptr, nullptr);
+  DWORD bytes_written{}; // Unused, but required according to https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefile
+  (void)::WriteFile(handle_, data, static_cast<DWORD>(sz), &bytes_written, nullptr);
 }
 
 }
