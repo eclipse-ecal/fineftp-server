@@ -1304,6 +1304,13 @@ namespace fineftp
                                                         }
                                                         else
                                                         {
+                                                          // Close Data Socket properly
+                                                          {
+                                                            asio::error_code ec;
+                                                            data_socket->shutdown(asio::socket_base::shutdown_both, ec);
+                                                            data_socket->close(ec);
+                                                          }
+
                                                           // Ugly work-around:
                                                           // An FTP client implementation has been observed to close the data connection
                                                           // as soon as it receives the 226 status code - even though it hasn't received
@@ -1313,13 +1320,6 @@ namespace fineftp
                                                           #if (0 == DELAY_226_RESP_MS)
                                                             me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                                                           #else
-                                                            // Close Data Socket properly
-                                                            {
-                                                              asio::error_code ec;
-                                                              data_socket->shutdown(asio::socket_base::shutdown_both, ec);
-                                                              data_socket->close(ec);
-                                                            }
-
                                                             me->timer_.expires_after(std::chrono::milliseconds{DELAY_226_RESP_MS});
                                                             me->timer_.async_wait(me->data_socket_strand_.wrap([me](const asio::error_code& ec)
                                                                                   {
