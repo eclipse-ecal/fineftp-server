@@ -1306,9 +1306,9 @@ namespace fineftp
                                                         {
                                                           // Close Data Socket properly
                                                           {
-                                                            asio::error_code ec;
-                                                            data_socket->shutdown(asio::socket_base::shutdown_both, ec);
-                                                            data_socket->close(ec);
+                                                            asio::error_code errc;
+                                                            data_socket->shutdown(asio::socket_base::shutdown_both, errc);
+                                                            data_socket->close(errc);
                                                           }
 
                                                           // Ugly work-around:
