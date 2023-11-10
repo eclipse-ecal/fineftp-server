@@ -92,6 +92,14 @@ target_compile_options(${PROJECT_NAME} PRIVATE
                            $<$<CXX_COMPILER_ID:MSVC>:
                                 /W4>)
 
+# The below is used to configure an optional delay when sending the 226 response code when a file has been fetched.
+# The background for this option is that an FTP client implementation has been observed to close the data connection
+# as soon as it receives the 226 status code - even though it hasn't received/ all data, yet. To improve
+# interoperability with such buggy clients, sending of the 226 status code can be delayed a bit. The delay is specified
+# in milliseconds. If the delay is 0, no delay is introduced.
+set(FINEFTP_SERVER_DELAY_226_RESP_MS 0 CACHE STRING
+    "An optional delay (in ms) for the 226 response when a file has been fetched. Used to improve interoperability with buggy clients.")
+target_compile_definitions(${PROJECT_NAME} PRIVATE DELAY_226_RESP_MS=${FINEFTP_SERVER_DELAY_226_RESP_MS})
 
 # Add own public include directory
 target_include_directories(${PROJECT_NAME}
