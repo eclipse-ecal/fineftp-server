@@ -41,7 +41,7 @@ jobs:
         }
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules:  'true'
         fetch-depth: 0
@@ -86,7 +86,7 @@ jobs:
         echo "CMAKE_PROJECT_VERSION=$cmake_project_version"  >> "$Env:GITHUB_ENV"
 
     - name: Upload binaries
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-windows-${{ matrix.build_arch }}-${{ env.VS_NAME }}-${{ matrix.library_type }}
         path: ${{github.workspace}}/${{env.INSTALL_PREFIX}}
