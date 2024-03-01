@@ -1289,6 +1289,12 @@ namespace fineftp
                                   {
                                     me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
                                   }
+                                  else if (file->data() == nullptr)
+                                  {
+                                    // Error that should never happen. If it does, it's a bug in the server.
+                                    // Usually, if the data is null, the file size should be 0.
+                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: File data is null");
+                                  }
                                   else
                                   {
                                     me->data_socket_weakptr_ = data_socket;
