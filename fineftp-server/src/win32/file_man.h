@@ -33,10 +33,10 @@ public:
 
   /// Retrieves the file at the specified path.
   ///
-  /// @param pth      The path of the file.
+  /// @param file_path      The path of the file.
   ///
   /// @param The requested file or nullptr if the file could not be retrieved.
-  static std::shared_ptr<ReadableFile> get(const Str& pth);
+  static std::shared_ptr<ReadableFile> get(const Str& file_path);
 
   /// Returns the size of the file.
   ///
@@ -56,7 +56,7 @@ public:
 private:
   ReadableFile() = default;
 
-  Str           pth_        = {};
+  Str           path_       = {};
   std::size_t   size_       = {};
   std::uint8_t* data_       = {};
   HANDLE        handle_     = INVALID_HANDLE_VALUE;
@@ -105,7 +105,7 @@ inline const std::uint8_t* ReadableFile::data() const
 
 inline const ReadableFile::Str& ReadableFile::path() const
 {
-  return pth_;
+  return path_;
 }
 
 inline bool WriteableFile::good() const
