@@ -182,8 +182,15 @@ configure_package_config_file(
   INSTALL_DESTINATION ${FINEFTP_INSTALL_CMAKE_DIR}
   PATH_VARS FINEFTP_INSTALL_CMAKE_DIR
 )
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/cmake_/fineftpConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
 install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/cmake_/fineftpConfig.cmake"
+  FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_/fineftpConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_/fineftpConfigVersion.cmake"
   DESTINATION ${FINEFTP_INSTALL_CMAKE_DIR}
   COMPONENT fineftp_server_dev
 )
