@@ -193,17 +193,17 @@ namespace Filesystem
 
 #if defined(__unix__)
     localtime_r(&now_time_t,            &now_timeinfo);
-    localtime_r(&file_status_.st_ctime, &file_timeinfo);
+    gmtime_r   (&file_status_.st_mtime, &file_timeinfo);
 #elif defined(_MSC_VER)
     localtime_s(&now_timeinfo,  &now_time_t);
-    localtime_s(&file_timeinfo, &file_status_.st_ctime);
+    gmtime_s   (&file_timeinfo, &file_status_.st_mtime);
 #else
     static std::mutex mtx;
     {
       std::lock_guard<std::mutex> lock(mtx);
 
       now_timeinfo = *std::localtime(&now_time_t);
-      file_timeinfo = *std::localtime(&file_status_.st_ctime);
+      file_timeinfo = *std::gmtime  (&file_status_.st_mtime);
     }
 #endif
 
