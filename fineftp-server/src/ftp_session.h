@@ -46,6 +46,7 @@ namespace fineftp
     ~FtpSession();
 
     void start();
+    void stop();
 
     asio::ip::tcp::socket& getSocket();
 

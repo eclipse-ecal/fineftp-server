@@ -20,7 +20,6 @@ namespace fineftp
     : port_                 (port)
     , address_              (address)
     , acceptor_             (io_service_)
-    , open_connection_count_(0)
   {}
 
   FtpServerImpl::~FtpServerImpl()
@@ -40,8 +39,6 @@ namespace fineftp
 
   bool FtpServerImpl::start(size_t thread_count)
   {
-    auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
-
     // set up the acceptor to listen on the tcp port
     asio::error_code make_address_ec;
     const asio::ip::tcp::endpoint endpoint(asio::ip::make_address(address_, make_address_ec), port_);
@@ -52,6 +49,8 @@ namespace fineftp
     }
     
     {
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+
       asio::error_code ec;
       acceptor_.open(endpoint.protocol(), ec);
       if (ec)
@@ -62,6 +61,8 @@ namespace fineftp
     }
     
     {
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+
       asio::error_code ec;
       acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true), ec);
       if (ec)
@@ -72,6 +73,8 @@ namespace fineftp
     }
     
     {
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+
       asio::error_code ec;
       acceptor_.bind(endpoint, ec);
       if (ec)
@@ -82,6 +85,8 @@ namespace fineftp
     }
     
     {
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+
       asio::error_code ec;
       acceptor_.listen(asio::socket_base::max_listen_connections, ec);
       if (ec)
@@ -92,16 +97,13 @@ namespace fineftp
     }
     
 #ifndef NDEBUG
-    std::cout << "FTP Server created." << std::endl << "Listening at address " << acceptor_.local_endpoint().address() << " on port " << acceptor_.local_endpoint().port() << ":" << std::endl;
+    {
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+      std::cout << "FTP Server created." << std::endl << "Listening at address " << acceptor_.local_endpoint().address() << " on port " << acceptor_.local_endpoint().port() << ":" << std::endl;
+    }
 #endif // NDEBUG
 
-    acceptor_.async_accept(ftp_session->getSocket()
-                          , [this, ftp_session](auto ec)
-                          {
-                            open_connection_count_++;
-
-                            acceptFtpSession(ftp_session, ec);
-                          });
+    waitForNextFtpSession();
 
     for (size_t i = 0; i < thread_count; i++)
     {
@@ -113,52 +115,87 @@ namespace fineftp
 
   void FtpServerImpl::stop()
   {
-    io_service_.stop();
-    for (std::thread& thread : thread_pool_)
+    // Prevent new sessions from being created
     {
-      thread.join();
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+
+      // Close acceptor, if necessary
+      if (acceptor_.is_open())
+      {
+        asio::error_code ec;
+        acceptor_.close(ec); // NOLINT(bugprone-unused-return-value) -> We already get the return value  rom the ec parameter
+      }
     }
-    thread_pool_.clear();
+
+    // Stop all sessions
+    {
+      const std::lock_guard<std::mutex> session_list_lock(session_list_mutex_);
+      for(const auto& session_weak : session_list_)
+      {
+        const auto session = session_weak.lock();
+        if (session)
+          session->stop();
+      }
+    }
+
+    // Wait for the io_context to run out of work by joining all threads
+    {
+      for (std::thread& thread : thread_pool_)
+      {
+        thread.join();
+      }
+      thread_pool_.clear();
+    }
   }
 
-  void FtpServerImpl::acceptFtpSession(const std::shared_ptr<FtpSession>& ftp_session, asio::error_code const& error)
+  void FtpServerImpl::waitForNextFtpSession()
   {
-    if (error)
+    // TODO: create proper shutdown callback as lambda
+
+    auto shutdown_callback = [this]() { };
+
+    auto new_ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, shutdown_callback);
+
     {
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+      acceptor_.async_accept(new_ftp_session->getSocket()
+                            , [this, new_ftp_session](asio::error_code ec) // TODO: replace this with weak ptr to this
+                              {
+                                if (ec)
+                                {
+                                  std::cerr << "Error accepting connection: " << ec.message() << std::endl;
+                                  return;
+                                }
+
 #ifndef NDEBUG
-      std::cerr << "Error handling connection: " << error.message() << std::endl;
+                                std::cout << "FTP Client connected: " << new_ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << new_ftp_session->getSocket().remote_endpoint().port() << std::endl;
 #endif
-      return;
+                                const std::lock_guard<std::mutex> session_list_lock(this->session_list_mutex_);
+                                this->session_list_.push_back(new_ftp_session);
+
+                                new_ftp_session->start();
+
+                                waitForNextFtpSession();
+                              });
     }
-
-#ifndef NDEBUG
-    std::cout << "FTP Client connected: " << ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << ftp_session->getSocket().remote_endpoint().port() << std::endl;
-#endif
-
-    ftp_session->start();
-
-    auto new_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
-
-    acceptor_.async_accept(new_session->getSocket()
-                          , [this, new_session](auto ec)
-                          {
-                            open_connection_count_++;
-                            acceptFtpSession(new_session, ec);
-                          });
   }
 
   int FtpServerImpl::getOpenConnectionCount()
   {
-    return open_connection_count_;
+    const std::lock_guard<std::mutex> session_list_lock(session_list_mutex_);
+    // TODO: 2024-10-23: Check if closed sessions can be in this list and if I need to iterate over this list to count the open ones, only
+    return session_list_.size();
   }
 
   uint16_t FtpServerImpl::getPort()
   {
+    const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
     return acceptor_.local_endpoint().port();
   }
 
   std::string FtpServerImpl::getAddress()
   {
+    const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
     return acceptor_.local_endpoint().address().to_string();
   }
 }

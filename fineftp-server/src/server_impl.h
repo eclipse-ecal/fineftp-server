@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -46,7 +47,7 @@ namespace fineftp
     std::string getAddress();
 
   private:
-    void acceptFtpSession(const std::shared_ptr<FtpSession>& ftp_session, asio::error_code const& error);
+    void waitForNextFtpSession();
 
   private:
     UserDatabase   ftp_users_;
@@ -56,8 +57,11 @@ namespace fineftp
 
     std::vector<std::thread> thread_pool_;
     asio::io_service         io_service_;
-    asio::ip::tcp::acceptor  acceptor_;
 
-    std::atomic<int> open_connection_count_;
+    mutable std::mutex       acceptor_mutex_;                     //!< Mutex protecting the acceptor. That is necessary, as the user may stop the server (and therefore close the acceptor) from another thread.
+    asio::ip::tcp::acceptor  acceptor_;                           //!< The acceptor waiting for new sessions
+
+    mutable std::mutex                      session_list_mutex_;  //!< Mutex protecting the list of current sessions
+    std::vector<std::weak_ptr<FtpSession>>  session_list_;        //!< List of sessions. Only store weak_ptr, so the sessions can delete themselves. This list is used to stop sessions and count connections
   };
 }

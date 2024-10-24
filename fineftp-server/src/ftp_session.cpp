@@ -54,30 +54,7 @@ namespace fineftp
 
   FtpSession::~FtpSession()
   {
-#ifndef NDEBUG
-    std::cout << "Ftp Session shutting down" << std::endl;
-#endif // !NDEBUG
-
-    {
-      // Properly close command socket.
-      // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
-      // it and hence no possibility of race conditions on command_socket_.
-      asio::error_code ec;
-      command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-      command_socket_.close(ec);
-    }
-
-    // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
-    // it and hence no possibility of race conditions on data_socket_weak_ptr_.
-    auto data_socket = data_socket_weakptr_.lock();
-    if (data_socket)
-    {
-      // Properly close data socket
-      asio::error_code ec;
-      data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-      data_socket->close(ec);
-    }
-
+    stop();
     completion_handler_();
   }
 
@@ -89,6 +66,37 @@ namespace fineftp
 
     command_strand_.post([me = shared_from_this()]() { me->readFtpCommand(); });
     sendFtpMessage(FtpMessage(FtpReplyCode::SERVICE_READY_FOR_NEW_USER, "Welcome to fineFTP Server"));
+  }
+
+  // TODO: I need to check if the command socket AND data socket is always shutdown and closed.
+  void FtpSession::stop()
+  {
+#ifndef NDEBUG
+    // TODO: Have a "is stopped" variable, so that this log message is not printed every time
+    std::cout << "Ftp Session shutting down" << std::endl;
+#endif // !NDEBUG
+
+    // TODO: protect the two sockets with mutexes, as it is now possible to call stop() from another thread!!!
+
+    {
+      // Properly close command socket.
+      // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
+      // it and hence no possibility of race conditions on command_socket_.
+      asio::error_code ec;
+      command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);       // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
+      command_socket_.close(ec);                                                // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
+    }
+
+    // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
+    // it and hence no possibility of race conditions on data_socket_weak_ptr_.
+    auto data_socket = data_socket_weakptr_.lock();
+    if (data_socket)
+    {
+      // Properly close data socket
+      asio::error_code ec;
+      data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);          // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
+      data_socket->close(ec);                                                   // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
+    }
   }
 
   asio::ip::tcp::socket& FtpSession::getSocket()
