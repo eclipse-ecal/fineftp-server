@@ -15,6 +15,10 @@
 
 namespace fineftp
 {
+  std::shared_ptr<FtpServerImpl> FtpServerImpl::create(const std::string& address, uint16_t port)
+  {
+    return std::shared_ptr<FtpServerImpl>(new FtpServerImpl(address, port));
+  }
 
   FtpServerImpl::FtpServerImpl(const std::string& address, uint16_t port)
     : port_                 (port)
@@ -130,11 +134,11 @@ namespace fineftp
     // Stop all sessions
     {
       const std::lock_guard<std::mutex> session_list_lock(session_list_mutex_);
-      for(const auto& session_weak : session_list_)
+      for(const auto& session_pair : session_list_)
       {
-        const auto session = session_weak.lock();
-        if (session)
-          session->stop();
+        const auto session_sharedptr = session_pair.second.lock();
+        if (session_sharedptr)
+          session_sharedptr->stop();
       }
     }
 
@@ -150,32 +154,50 @@ namespace fineftp
 
   void FtpServerImpl::waitForNextFtpSession()
   {
-    // TODO: create proper shutdown callback as lambda
+    auto shutdown_callback = [weak_me = std::weak_ptr<FtpServerImpl>(shared_from_this())](FtpSession* session_to_delete)
+                              {
+                                if (auto me = weak_me.lock())
+                                {
+                                  // Lock session_list
+                                  const std::lock_guard<std::mutex> session_list_lock(me->session_list_mutex_);
 
-    auto shutdown_callback = [this]() { };
+                                  // Remove session_to_delete from the session_list
+                                  me->session_list_.erase(session_to_delete);
+                                }
+                              };
 
     auto new_ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, shutdown_callback);
 
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
       acceptor_.async_accept(new_ftp_session->getSocket()
-                            , [this, new_ftp_session](asio::error_code ec) // TODO: replace this with weak ptr to this
+                            , [weak_me = std::weak_ptr<FtpServerImpl>(shared_from_this()), new_ftp_session](asio::error_code ec)
                               {
                                 if (ec)
                                 {
-                                  std::cerr << "Error accepting connection: " << ec.message() << std::endl;
+                                  if (ec != asio::error::operation_aborted)
+                                  {
+                                    std::cerr << "Error accepting connection: " << ec.message() << std::endl;
+                                  }
                                   return;
                                 }
 
 #ifndef NDEBUG
                                 std::cout << "FTP Client connected: " << new_ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << new_ftp_session->getSocket().remote_endpoint().port() << std::endl;
 #endif
-                                const std::lock_guard<std::mutex> session_list_lock(this->session_list_mutex_);
-                                this->session_list_.push_back(new_ftp_session);
+                                // TODO: review if this is thread safe, if right here the ftp server is shut down and the acceptor is closed. I think, that then the session will still be added to the list of open sessions and kept open.
 
-                                new_ftp_session->start();
+                                auto me = weak_me.lock();
 
-                                waitForNextFtpSession();
+                                if (me)
+                                {
+                                  const std::lock_guard<std::mutex> session_list_lock(me->session_list_mutex_);
+                                  me->session_list_.emplace(new_ftp_session.get(), std::weak_ptr<FtpSession>(new_ftp_session)); // Add the session to the list of open sessions
+
+                                  new_ftp_session->start();
+
+                                  me->waitForNextFtpSession();
+                                }
                               });
     }
   }
@@ -183,8 +205,7 @@ namespace fineftp
   int FtpServerImpl::getOpenConnectionCount()
   {
     const std::lock_guard<std::mutex> session_list_lock(session_list_mutex_);
-    // TODO: 2024-10-23: Check if closed sessions can be in this list and if I need to iterate over this list to count the open ones, only
-    return session_list_.size();
+    return static_cast<int>(session_list_.size());
   }
 
   uint16_t FtpServerImpl::getPort()

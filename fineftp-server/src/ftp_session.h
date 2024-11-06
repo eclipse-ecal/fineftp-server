@@ -33,7 +33,7 @@ namespace fineftp
   // Public API
   ////////////////////////////////////////////////////////
   public:
-    FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler);
+    FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void(FtpSession*)>& completion_handler);
 
     // Copy (disabled, as we are inheriting from shared_from_this)
     FtpSession(const FtpSession&)            = delete;
@@ -176,7 +176,7 @@ namespace fineftp
   ////////////////////////////////////////////////////////
   private:
     // Completion handler
-    const std::function<void()> completion_handler_;
+    const std::function<void(FtpSession*)> completion_handler_;
 
     // User management
     const UserDatabase&      user_database_;

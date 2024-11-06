@@ -18,11 +18,15 @@
 
 namespace fineftp
 {
-  class FtpServerImpl
+  class FtpServerImpl : public std::enable_shared_from_this<FtpServerImpl>
   {
   public:
+    static std::shared_ptr<FtpServerImpl> create(const std::string& address, uint16_t port);
+    
+  private:
     FtpServerImpl(const std::string& address, uint16_t port);
 
+  public:
     // Copy (disabled)
     FtpServerImpl(const FtpServerImpl&)            = delete;
     FtpServerImpl& operator=(const FtpServerImpl&) = delete;
@@ -58,10 +62,10 @@ namespace fineftp
     std::vector<std::thread> thread_pool_;
     asio::io_service         io_service_;
 
-    mutable std::mutex       acceptor_mutex_;                     //!< Mutex protecting the acceptor. That is necessary, as the user may stop the server (and therefore close the acceptor) from another thread.
-    asio::ip::tcp::acceptor  acceptor_;                           //!< The acceptor waiting for new sessions
+    mutable std::mutex       acceptor_mutex_;                                   //!< Mutex protecting the acceptor. That is necessary, as the user may stop the server (and therefore close the acceptor) from another thread.
+    asio::ip::tcp::acceptor  acceptor_;                                         //!< The acceptor waiting for new sessions
 
-    mutable std::mutex                      session_list_mutex_;  //!< Mutex protecting the list of current sessions
-    std::vector<std::weak_ptr<FtpSession>>  session_list_;        //!< List of sessions. Only store weak_ptr, so the sessions can delete themselves. This list is used to stop sessions and count connections
+    mutable std::mutex                                session_list_mutex_;      //!< Mutex protecting the list of current sessions
+    std::map<FtpSession*, std::weak_ptr<FtpSession>>  session_list_;            //!< List of sessions. Only store weak_ptr, so the sessions can delete themselves. This list is used to stop sessions and count connections. The raw pointers are used to identify the entry even while a session is currently in the destructor, as there is no cross-plattform way of obtaining the raw pointer from the weak pointer in that case.
   };
 }

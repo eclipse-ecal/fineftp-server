@@ -162,7 +162,7 @@ namespace fineftp
     FINEFTP_EXPORT std::string getAddress() const;
 
   private:
-    std::unique_ptr<FtpServerImpl> ftp_server_;        /**< Implementation details */
+    std::shared_ptr<FtpServerImpl> ftp_server_;        /**< Implementation details */
   };
 
 }

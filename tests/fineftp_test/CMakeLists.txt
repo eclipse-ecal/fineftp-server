@@ -11,6 +11,7 @@ set(FINEFTP_SERVER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../fineftp-server/src
 set(sources
   src/fineftp_stresstest.cpp
   src/permission_test.cpp
+  src/startstop_test.cpp
 )
 set(fineftp_server_sources
     ${FINEFTP_SERVER_SRC_DIR}/filesystem.cpp

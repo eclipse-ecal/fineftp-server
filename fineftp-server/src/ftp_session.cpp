@@ -37,7 +37,7 @@
 namespace fineftp
 {
 
-  FtpSession::FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler)
+  FtpSession::FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void(FtpSession*)>& completion_handler)
     : completion_handler_   (completion_handler)
     , user_database_        (user_database)
     , io_service_           (io_service)
@@ -55,7 +55,7 @@ namespace fineftp
   FtpSession::~FtpSession()
   {
     stop();
-    completion_handler_();
+    completion_handler_(this);
   }
 
   void FtpSession::start()
@@ -82,9 +82,22 @@ namespace fineftp
       // Properly close command socket.
       // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
       // it and hence no possibility of race conditions on command_socket_.
-      asio::error_code ec;
-      command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);       // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
-      command_socket_.close(ec);                                                // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
+      {
+        asio::error_code ec;
+        command_socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);       // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
+        //if(ec)
+        //{
+        //  std::cerr << "Error shutting down command socket: " << ec.message() << std::endl;
+        //}
+      }
+      {
+        asio::error_code ec;
+        command_socket_.close(ec);                                                // NOLINT(bugprone-unused-return-value) -> We already get the value from the ec parameter
+        //if(ec)
+        //{
+        //  std::cerr << "Error closing command socket: " << ec.message() << std::endl;
+        //}
+      }
     }
 
     // When the FtpSession is being destroyed, there are no std::shared_ptr's referring to
@@ -158,7 +171,11 @@ namespace fineftp
                         }
                         else
                         {
-                          std::cerr << "Command write error for message " << me->command_output_queue_.front() << ec.message() << std::endl;
+                          // Remove \r and \n from the end of the message
+                          auto trimmed_message = me->command_output_queue_.front();
+                          trimmed_message.erase(trimmed_message.find_last_not_of("\r\n") + 1);
+
+                          std::cerr << "Command write error for message " << trimmed_message << ": " << ec.message() << std::endl;
                         }
                       }
                     ));
