@@ -1,14 +1,15 @@
-#include <cstdint>
-#include <cstdlib>
 #include <gtest/gtest.h>
 
 #include <fineftp/server.h>
 
+#include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <string>
 #include <system_error>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -107,7 +108,7 @@ namespace
     /**
      * @brief Creates a file with a given size in bytes for all servers
      */
-    void create_server_files(std::filesystem::path& relative_path, size_t size_bytes)
+    void create_server_files(const std::filesystem::path& relative_path, size_t size_bytes) const
     {
       // Throw exception, if the path is not relative
       if (relative_path.is_absolute())
@@ -125,7 +126,7 @@ namespace
     /**
      * @brief Creates a file with a given size in bytes for all clients
      */
-    void create_client_files(std::filesystem::path& relative_path, size_t size_bytes)
+    void create_client_files(const std::filesystem::path& relative_path, size_t size_bytes) const
     {
       // Throw exception, if the path is not relative
       if (relative_path.is_absolute())
@@ -161,7 +162,7 @@ namespace
 // Create and destroy a server object without doing aynthing with it
 TEST(StartStopTests, RAII_destroy_without_connection)
 {
-  fineftp::FtpServer server(2121);
+  const fineftp::FtpServer server(2121);
 }
 #endif
 
@@ -188,7 +189,7 @@ TEST(StartStopTests, RAII_destroy_started_stopped)
 // Access the server with curl and check the connection count
 TEST(StartStopTests, connection_count)
 {
-  DirPreparer dir_preparer(1, 1);
+  const DirPreparer dir_preparer(1, 1);
   dir_preparer.create_client_files(std::filesystem::path("test.txt"), 16);
 
   {
@@ -220,7 +221,7 @@ TEST(StartStopTests, multiple_servers_upload_stop)
   constexpr unsigned int num_servers = 100; // TODO: increase
   constexpr unsigned int num_clients_per_server = 5; // TODO: increase
 
-  DirPreparer dir_preparer(num_servers, num_clients_per_server);
+  const DirPreparer dir_preparer(num_servers, num_clients_per_server);
   dir_preparer.create_client_files(std::filesystem::path("test.txt"), 10 * 1024 * 1024);
 
   // Create a large amount of FTP Servers
@@ -258,16 +259,16 @@ TEST(StartStopTests, multiple_servers_upload_stop)
   // established a connection, yet
   for (unsigned int server_idx = 0; server_idx < num_servers; ++server_idx)
   {
-    uint16_t port = server_list[server_idx]->getPort();
+    const uint16_t port = server_list[server_idx]->getPort();
 
     for (unsigned int client_idx = 0; client_idx < num_clients_per_server; ++client_idx)
     {
-      threads.push_back(std::thread([&dir_preparer, server_idx, client_idx, port]()
-        {
-          // use CURL to upload the file to the server
-          const std::string curl_command = "curl -S -s --max-time 5 --connect-timeout 1 -T " + dir_preparer.client_local_root_dir(server_idx, client_idx).string() + "/test.txt ftp://localhost:" + std::to_string(port) + "/test" + std::to_string(client_idx) + ".txt --user anonymous:anonymous";
-          const int curl_return_code = system_execute(curl_command);
-        }));
+      threads.emplace_back([&dir_preparer, server_idx, client_idx, port]()
+                            {
+                              // use CURL to upload the file to the server
+                              const std::string curl_command = "curl -S -s --max-time 5 --connect-timeout 1 -T " + dir_preparer.client_local_root_dir(server_idx, client_idx).string() + "/test.txt ftp://localhost:" + std::to_string(port) + "/test" + std::to_string(client_idx) + ".txt --user anonymous:anonymous";
+                              const int curl_return_code = system_execute(curl_command);
+                            });
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
