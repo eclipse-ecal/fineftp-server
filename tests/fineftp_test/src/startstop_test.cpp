@@ -215,6 +215,44 @@ TEST(StartStopTests, connection_count)
 #endif
 
 #if 1
+// Restart the server multiple times and check if the same socket can be reused
+TEST(StartStopTests, restart_server)
+{
+  constexpr size_t num_restarts = 10;
+
+  const DirPreparer dir_preparer(1, 1);
+  dir_preparer.create_client_files(std::filesystem::path("test.txt"), 16);
+
+
+  std::unique_ptr<fineftp::FtpServer> server;
+
+  for (unsigned int i = 0; i < num_restarts; ++i)
+  {
+    if (server)
+    {
+      server->stop();
+      server.reset();
+    }
+
+    server = std::make_unique<fineftp::FtpServer>(2121);
+    server->addUserAnonymous(dir_preparer.server_local_root_dir(0).string(), fineftp::Permission::All);
+    server->start(4);
+
+    // use CURL to upload the file to the server
+    const std::string curl_command = "curl -S -s -T " + dir_preparer.client_local_root_dir(0, 0).string() + "/test.txt ftp://localhost:2121/test" + std::to_string(i) + ".txt --user anonymous:anonymous";
+    const int curl_return_code = system_execute(curl_command);
+
+    // Check return code
+    EXPECT_EQ(curl_return_code, 0);
+
+    // Check existence of file
+    EXPECT_TRUE(std::filesystem::exists(dir_preparer.server_local_root_dir(0) / ("test" + std::to_string(i) + ".txt")));
+  }
+}
+
+#endif
+
+#if 1
 // Create a large amount of servers, upload files to them from threads and stop the servers while the upload may still be in progress
 TEST(StartStopTests, multiple_servers_upload_stop)
 {

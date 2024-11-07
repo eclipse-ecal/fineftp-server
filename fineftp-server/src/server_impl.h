@@ -54,10 +54,11 @@ namespace fineftp
     void waitForNextFtpSession();
 
   private:
-    UserDatabase   ftp_users_;
+    UserDatabase      ftp_users_;
 
-    const uint16_t port_;
-    const std::string address_;
+    const uint16_t    port_;                                                    //! Port used on creation. May be 0. In that case, the OS will choose a port. Thus, this variable should not be used for getting the actual port.
+    const std::string address_;                                                 //! Address used on creation. The acceptor is bound to that address.
+    std::atomic<bool> is_stopped_;                                              //! Tells whether the server has been stopped. When stopped, it will refuse to accept new connections.
 
     std::vector<std::thread> thread_pool_;
     asio::io_service         io_service_;

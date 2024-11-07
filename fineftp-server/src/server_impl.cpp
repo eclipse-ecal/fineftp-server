@@ -23,6 +23,7 @@ namespace fineftp
   FtpServerImpl::FtpServerImpl(const std::string& address, uint16_t port)
     : port_                 (port)
     , address_              (address)
+    , is_stopped_           (false)
     , acceptor_             (io_service_)
   {}
 
@@ -63,18 +64,19 @@ namespace fineftp
         return false;
       }
     }
-    
-    {
-      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
 
-      asio::error_code ec;
-      acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true), ec);
-      if (ec)
-      {
-        std::cerr << "Error setting reuse_address option: " << ec.message() << std::endl;
-        return false;
-      }
-    }
+    // TODO: Add the code again to use reuse_address option
+    //{
+    //  const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+
+    //  asio::error_code ec;
+    //  acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true), ec);
+    //  if (ec)
+    //  {
+    //    std::cerr << "Error setting reuse_address option: " << ec.message() << std::endl;
+    //    return false;
+    //  }
+    //}
     
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
@@ -119,6 +121,8 @@ namespace fineftp
 
   void FtpServerImpl::stop()
   {
+    is_stopped_ = true;
+
     // Prevent new sessions from being created
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
@@ -154,6 +158,11 @@ namespace fineftp
 
   void FtpServerImpl::waitForNextFtpSession()
   {
+    if (is_stopped_)
+    {
+      return;
+    }
+
     auto shutdown_callback = [weak_me = std::weak_ptr<FtpServerImpl>(shared_from_this())](FtpSession* session_to_delete)
                               {
                                 if (auto me = weak_me.lock())
@@ -173,6 +182,16 @@ namespace fineftp
       acceptor_.async_accept(new_ftp_session->getSocket()
                             , [weak_me = std::weak_ptr<FtpServerImpl>(shared_from_this()), new_ftp_session](asio::error_code ec)
                               {
+                                // Lock the shared pointer to this. May be a nullptr, so we need to check!!!
+                                auto me = weak_me.lock();
+
+                                // Before even checking the error code, check if the server has been stopped
+                                if (!me || (me->is_stopped_))
+                                {
+                                  return;
+                                }
+
+                                // Check error code
                                 if (ec)
                                 {
                                   if (ec != asio::error::operation_aborted)
@@ -186,8 +205,6 @@ namespace fineftp
                                 std::cout << "FTP Client connected: " << new_ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << new_ftp_session->getSocket().remote_endpoint().port() << std::endl;
 #endif
                                 // TODO: review if this is thread safe, if right here the ftp server is shut down and the acceptor is closed. I think, that then the session will still be added to the list of open sessions and kept open.
-
-                                auto me = weak_me.lock();
 
                                 if (me)
                                 {
