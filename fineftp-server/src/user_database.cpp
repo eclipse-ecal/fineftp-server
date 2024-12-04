@@ -25,14 +25,14 @@ namespace fineftp
     {
       if (anonymous_user_)
       {
-        std::cerr << "Error adding user with username \"" << username << "\". The username denotes the anonymous user, which is already present." << std::endl;
+        error_ << "Error adding user with username \"" << username << "\". The username denotes the anonymous user, which is already present." << std::endl;
         return false;
       }
       else
       {
         anonymous_user_ = std::make_shared<FtpUser>(password, local_root_path, permissions);
 #ifndef NDEBUG
-        std::cout << "Successfully added anonymous user." << std::endl;
+        output_ << "Successfully added anonymous user." << std::endl;
 #endif // !NDEBUG
         return true;
       }
@@ -44,13 +44,13 @@ namespace fineftp
       {
         database_.emplace(username, std::make_shared<FtpUser>(password, local_root_path, permissions));
 #ifndef NDEBUG
-        std::cout << "Successfully added user \"" << username << "\"." << std::endl;
+        output_ << "Successfully added user \"" << username << "\"." << std::endl;
 #endif // !NDEBUG
         return true;
       }
       else
       {
-        std::cerr << "Error adding user with username \"" << username << "\". The user already exists." << std::endl;
+        error_ << "Error adding user with username \"" << username << "\". The user already exists." << std::endl;
         return false;
       }
     }
