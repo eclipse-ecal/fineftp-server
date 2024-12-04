@@ -11,6 +11,12 @@
 
 namespace fineftp
 {
+  UserDatabase::UserDatabase(std::ostream& output, std::ostream& error)
+    : output_(output)
+    , error_(error)
+  { 
+  }
+
   bool UserDatabase::addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions)
   {
     const std::lock_guard<decltype(database_mutex_)> database_lock(database_mutex_);

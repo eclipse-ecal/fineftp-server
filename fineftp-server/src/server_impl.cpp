@@ -16,11 +16,14 @@
 namespace fineftp
 {
 
-  FtpServerImpl::FtpServerImpl(const std::string& address, uint16_t port)
-    : port_                 (port)
+  FtpServerImpl::FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
+    : ftp_users_(output, error)
+    , port_                 (port)
     , address_              (address)
     , acceptor_             (io_service_)
     , open_connection_count_(0)
+    , output_(output)
+    , error_(error)
   {}
 
   FtpServerImpl::~FtpServerImpl()
@@ -40,7 +43,7 @@ namespace fineftp
 
   bool FtpServerImpl::start(size_t thread_count)
   {
-    auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
+    auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
 
     // set up the acceptor to listen on the tcp port
     asio::error_code make_address_ec;
@@ -137,7 +140,7 @@ namespace fineftp
 
     ftp_session->start();
 
-    auto new_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
+    auto new_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
 
     acceptor_.async_accept(new_session->getSocket()
                           , [this, new_session](auto ec)

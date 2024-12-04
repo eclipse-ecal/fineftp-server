@@ -37,7 +37,7 @@
 namespace fineftp
 {
 
-  FtpSession::FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler)
+  FtpSession::FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler, std::ostream& output, std::ostream& error)
     : completion_handler_   (completion_handler)
     , user_database_        (user_database)
     , io_service_           (io_service)
@@ -49,6 +49,8 @@ namespace fineftp
     , data_acceptor_        (io_service)
     , data_socket_strand_   (io_service)
     , timer_                (io_service)
+    , output_(output)
+    , error_(error)
   {
   }
 
@@ -1060,7 +1062,7 @@ namespace fineftp
         if (dir_status.canOpenDir())
         {
           sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending directory listing");
-          sendDirectoryListing(Filesystem::dirContent(local_path));
+          sendDirectoryListing(Filesystem::dirContent(local_path, error_));
           return;
         }
         else
@@ -1108,7 +1110,7 @@ namespace fineftp
         if (dir_status.canOpenDir())
         {
           sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending name list");
-          sendNameList(Filesystem::dirContent(local_path));
+          sendNameList(Filesystem::dirContent(local_path, error_));
           return;
         }
         else

@@ -283,7 +283,7 @@ namespace Filesystem
     return can_open_dir;
   }
 
-  std::map<std::string, FileStatus> dirContent(const std::string& path)
+  std::map<std::string, FileStatus> dirContent(const std::string& path, std::ostream& error)
   {
     std::map<std::string, FileStatus> content;
 #ifdef WIN32

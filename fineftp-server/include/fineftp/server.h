@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <iostream>
 
 // IWYU pragma: begin_exports
 #include <fineftp/permissions.h>
@@ -52,8 +53,10 @@ namespace fineftp
      * 
      * @param port: The port to start the FTP server on. Defaults to 21.
      * @param host: The host to accept incoming connections from.
+     * @param output: Normal output prints. Defaults to std::cout.
+     * @param error: Error output prints. Defaults to std::cerr.
      */
-    FINEFTP_EXPORT FtpServer(const std::string& address, uint16_t port = 21);
+    FINEFTP_EXPORT FtpServer(const std::string& address, const uint16_t port = 21, std::ostream& output = std::cout, std::ostream& error = std::cerr);
 
     /**
      * @brief Creates an FTP Server instance that will listen on the the given control port.
@@ -71,8 +74,10 @@ namespace fineftp
      * address. Use FtpServer(const std::string&, uint16_t) for that purpose.
      *
      * @param port: The port to start the FTP server on. Defaults to 21.
+     * @param output: Normal output prints. Defaults to std::cout.
+     * @param error: Error output prints. Defaults to std::cerr.
      */
-    FINEFTP_EXPORT FtpServer(uint16_t port = 21);
+    FINEFTP_EXPORT FtpServer(const uint16_t port = 21, std::ostream& output = std::cout, std::ostream& error = std::cerr);
 
     // Move
     FINEFTP_EXPORT FtpServer(FtpServer&&) noexcept;

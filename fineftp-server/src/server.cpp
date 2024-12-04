@@ -12,12 +12,12 @@
 
 namespace fineftp
 {
-  FtpServer::FtpServer(const std::string& address, uint16_t port)
-    : ftp_server_(std::make_unique<FtpServerImpl>(address, port))
+  FtpServer::FtpServer(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
+    : ftp_server_(std::make_unique<FtpServerImpl>(address, port, output, error))
   {}
 
-  FtpServer::FtpServer(uint16_t port)
-    : FtpServer(std::string("0.0.0.0"), port)
+  FtpServer::FtpServer(const uint16_t port, std::ostream& output, std::ostream& error)
+    : FtpServer(std::string("0.0.0.0"), port, output, error)
   {}
 
   // Move
