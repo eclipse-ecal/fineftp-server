@@ -297,7 +297,7 @@ namespace Filesystem
     hFind = FindFirstFileW(w_find_file_path.c_str(), &ffd);
     if (hFind == INVALID_HANDLE_VALUE)
     {
-      error_ << "FindFirstFile Error" << std::endl;
+      error << "FindFirstFile Error" << std::endl;
       return content;
     }
 
