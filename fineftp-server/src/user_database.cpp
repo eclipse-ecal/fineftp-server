@@ -14,7 +14,11 @@ namespace fineftp
   UserDatabase::UserDatabase(std::ostream& output, std::ostream& error)
     : output_(output)
     , error_(error)
-  { 
+  {
+#ifdef NDEBUG
+      // Avoid unused-private-field warning
+      static_cast<void>(output_);
+#endif // NDEBUG
   }
 
   bool UserDatabase::addUser(const std::string& username, const std::string& password, const std::string& local_root_path, Permission permissions)
