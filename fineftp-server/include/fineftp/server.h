@@ -59,6 +59,23 @@ namespace fineftp
     FINEFTP_EXPORT FtpServer(const std::string& address, const uint16_t port = 21, std::ostream& output = std::cout, std::ostream& error = std::cerr);
 
     /**
+     * @brief Creates an FTP Server instance that will listen on the the given control port and accept connections from the given network interface.
+     * 
+     * If no port is provided, the default FTP Port 21 is used. If you want to
+     * use that port, make sure that your application runs as root.
+     * 
+     * Instead of using a predefined port, the operating system can choose a
+     * free port port. Use port=0, if that behaviour is desired. The chosen port
+     * can be determined by with getPort().
+     * 
+     * @param port: The port to start the FTP server on. Defaults to 21.
+     * @param host: The host to accept incoming connections from.
+     * @param output: Normal output prints. Defaults to std::cout.
+     * @param error: Error output prints. Defaults to std::cerr.
+     */
+    FINEFTP_EXPORT FtpServer(const std::string& address, std::ostream& output = std::cout, std::ostream& error = std::cerr);
+
+    /**
      * @brief Creates an FTP Server instance that will listen on the the given control port.
      * 
      * If no port is provided, the default FTP Port 21 is used. If you want to
