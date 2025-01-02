@@ -56,7 +56,7 @@ namespace fineftp
      * @param output: Normal output prints. Defaults to std::cout.
      * @param error: Error output prints. Defaults to std::cerr.
      */
-    FINEFTP_EXPORT FtpServer(const std::string& address, const uint16_t port = 21, std::ostream& output = std::cout, std::ostream& error = std::cerr);
+    FINEFTP_EXPORT FtpServer(const std::string& address, uint16_t port = 21, std::ostream& output = std::cout, std::ostream& error = std::cerr);
 
     /**
      * @brief Creates an FTP Server instance that will listen on the the given control port and accept connections from the given network interface.
@@ -94,7 +94,7 @@ namespace fineftp
      * @param output: Normal output prints. Defaults to std::cout.
      * @param error: Error output prints. Defaults to std::cerr.
      */
-    FINEFTP_EXPORT FtpServer(const uint16_t port = 21, std::ostream& output = std::cout, std::ostream& error = std::cerr);
+    FINEFTP_EXPORT FtpServer(uint16_t port = 21, std::ostream& output = std::cout, std::ostream& error = std::cerr);
 
     // Move
     FINEFTP_EXPORT FtpServer(FtpServer&&) noexcept;

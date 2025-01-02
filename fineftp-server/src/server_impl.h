@@ -20,7 +20,7 @@ namespace fineftp
   class FtpServerImpl
   {
   public:
-    FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error);
+    FtpServerImpl(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
 
     // Copy (disabled)
     FtpServerImpl(const FtpServerImpl&)            = delete;
