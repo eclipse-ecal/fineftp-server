@@ -2,9 +2,20 @@
 
 #include "file_man.h"
 
+#include <cstdint>
+#include <ios>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <sstream>
+#include <string>
+#include <utility>
+
+#define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+  #define NOMINMAX
+#endif
+#include <windows.h>
 
 #include "win_str_convert.h"
 

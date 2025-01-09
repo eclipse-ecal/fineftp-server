@@ -1,9 +1,11 @@
 #include "ftp_session.h"
 
+#include <asio.hpp>
+
 #include <algorithm>
 #include <cassert> // assert
 #include <cctype>  // std::iscntrl, toupper
-#include <chrono>
+#include <chrono>   // IWYU pragma: keep (it is used for special preprocessor defines)
 #include <cstddef>
 #include <cstdio>
 #include <fstream>
@@ -28,6 +30,11 @@
 #include <sys/stat.h>
 
 #ifdef WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
+  #include <windows.h>
   #include "win_str_convert.h"
 #else
   #include <unistd.h>

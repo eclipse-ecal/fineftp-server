@@ -2,34 +2,27 @@
 
 #include "server_impl.h"
 
-#include <memory>
-#include <string>
-#include <cstdint> // uint16_t
-#include <cstddef> // size_t
 #include <cassert> // assert
+#include <cstddef> // size_t
+#include <cstdint> // uint16_t
+#include <memory>
+#include <ostream>
+#include <string>
 
 #include <fineftp/permissions.h>
 
 namespace fineftp
 {
-  FtpServer::FtpServer(const std::string& address, const uint16_t port)
-    : ftp_server_(std::make_unique<FtpServerImpl>(address, port, std::cout, std::cerr))
-  {}
-
   FtpServer::FtpServer(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
     : ftp_server_(std::make_unique<FtpServerImpl>(address, port, output, error))
   {}
 
-  FtpServer::FtpServer(const std::string& address, std::ostream& output, std::ostream& error)
-    : ftp_server_(std::make_unique<FtpServerImpl>(address, 21, output, error))
+  FtpServer::FtpServer(const std::string& address, const uint16_t port)
+    : FtpServer(address, port, std::cout, std::cerr)
   {}
 
   FtpServer::FtpServer(const uint16_t port)
     : FtpServer(std::string("0.0.0.0"), port, std::cout, std::cerr)
-  {}
-
-  FtpServer::FtpServer(const uint16_t port, std::ostream& output, std::ostream& error)
-    : FtpServer(std::string("0.0.0.0"), port, output, error)
   {}
 
   // Move

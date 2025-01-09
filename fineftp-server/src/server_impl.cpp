@@ -17,13 +17,13 @@ namespace fineftp
 {
 
   FtpServerImpl::FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
-    : ftp_users_(output, error)
+    : ftp_users_            (output, error)
     , port_                 (port)
     , address_              (address)
     , acceptor_             (io_service_)
     , open_connection_count_(0)
-    , output_(output)
-    , error_(error)
+    , output_               (output)
+    , error_                (error)
   {}
 
   FtpServerImpl::~FtpServerImpl()
