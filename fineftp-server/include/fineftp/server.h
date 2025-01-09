@@ -21,22 +21,22 @@ namespace fineftp
 
   /**
    * @brief The fineftp::FtpServer is a simple FTP server library.
-   *
+   * 
    * Using the FtpServer class is simple:
    *   1. Create an instance
    *   2. Add a user
    *   3. Start the server
-   *
+   * 
    * Then your server is up and running. In code it will look like this:
-   *
+   * 
    * @code{.cpp}
-   *
+   * 
    *   fineftp::FtpServer server(2121);
    *   server.addUserAnonymous("C:\\", fineftp::Permission::All);
    *   server.start();
-   *
+   * 
    * @endcode
-   *
+   * 
    */
   class FtpServer
   {
