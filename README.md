@@ -4,7 +4,7 @@
 
 FineFTP is a minimal FTP server library for Windows and Unix flavors. The project is CMake based and only depends on asio, which is integrated as git submodule. No boost is required.
 
-You can easily embed this library into your own project in order to create an embedded FTP Server. It was developed and tested on Windows 10 (Visual Studio 2015 and newer, MinGW) and Ubuntu 18.04 - 22.04 (gcc 7.4.0 - 11.2.0). It should also run fine on macOS.
+You can easily embed this library into your own project in order to create an embedded FTP Server. It was developed and tested on Windows 10 / 11 (Visual Studio 2015 and newer, MinGW) and Ubuntu 18.04 - 24.04 (gcc 7.4.0 - 13.2). It should also run fine on macOS.
 
 ## Features
 
@@ -113,14 +113,14 @@ You can set the following CMake Options to control how fineFTP Server is built:
         This which will inherit some behavior:
 
         - You can use the CMake options described below
-        - You will get the asio version shipped with fineFTP
+        - You will get the asio version shipped with fineFTP (by default)
         - The debug / minsize / relwithdebinfo postfix will be set automatically
 
 
-    - **Or** if you want to get a very clean version, which doesn't set any unnecessary options, include the `fineftp-server/server` subdirectory:
+    - **Or** if you want to get a very clean version, which doesn't set any unnecessary options, include the `fineftp-server/fineftp-server` subdirectory:
 
         ```cmake
-        add_subdirectory(path/to/fineftp-server/server)
+        add_subdirectory(path/to/fineftp-server/fineftp-server)
         ```
 
       You have to provide the required asio target on your own.
