@@ -20,7 +20,7 @@ namespace fineftp
   class FtpServerImpl
   {
   public:
-    FtpServerImpl(const std::string& address, uint16_t port);
+    FtpServerImpl(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
 
     // Copy (disabled)
     FtpServerImpl(const FtpServerImpl&)            = delete;
@@ -59,5 +59,8 @@ namespace fineftp
     asio::ip::tcp::acceptor  acceptor_;
 
     std::atomic<int> open_connection_count_;
+
+    std::ostream& output_;  /* Normal output log */
+    std::ostream& error_;   /* Error output log */
   };
 }

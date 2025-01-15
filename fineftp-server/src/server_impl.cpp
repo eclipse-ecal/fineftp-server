@@ -16,11 +16,14 @@
 namespace fineftp
 {
 
-  FtpServerImpl::FtpServerImpl(const std::string& address, uint16_t port)
-    : port_                 (port)
+  FtpServerImpl::FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
+    : ftp_users_            (output, error)
+    , port_                 (port)
     , address_              (address)
     , acceptor_             (io_service_)
     , open_connection_count_(0)
+    , output_               (output)
+    , error_                (error)
   {}
 
   FtpServerImpl::~FtpServerImpl()
@@ -40,14 +43,14 @@ namespace fineftp
 
   bool FtpServerImpl::start(size_t thread_count)
   {
-    auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
+    auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
 
     // set up the acceptor to listen on the tcp port
     asio::error_code make_address_ec;
     const asio::ip::tcp::endpoint endpoint(asio::ip::make_address(address_, make_address_ec), port_);
     if (make_address_ec)
     {
-      std::cerr << "Error creating address from string \"" << address_<< "\": " << make_address_ec.message() << std::endl;
+      error_ << "Error creating address from string \"" << address_<< "\": " << make_address_ec.message() << std::endl;
       return false;
     }
     
@@ -56,7 +59,7 @@ namespace fineftp
       acceptor_.open(endpoint.protocol(), ec);
       if (ec)
       {
-        std::cerr << "Error opening acceptor: " << ec.message() << std::endl;
+        error_ << "Error opening acceptor: " << ec.message() << std::endl;
         return false;
       }
     }
@@ -66,7 +69,7 @@ namespace fineftp
       acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true), ec);
       if (ec)
       {
-        std::cerr << "Error setting reuse_address option: " << ec.message() << std::endl;
+        error_ << "Error setting reuse_address option: " << ec.message() << std::endl;
         return false;
       }
     }
@@ -76,7 +79,7 @@ namespace fineftp
       acceptor_.bind(endpoint, ec);
       if (ec)
       {
-        std::cerr << "Error binding acceptor: " << ec.message() << std::endl;
+        error_ << "Error binding acceptor: " << ec.message() << std::endl;
         return false;
       }
     }
@@ -86,13 +89,13 @@ namespace fineftp
       acceptor_.listen(asio::socket_base::max_listen_connections, ec);
       if (ec)
       {
-        std::cerr << "Error listening on acceptor: " << ec.message() << std::endl;
+        error_ << "Error listening on acceptor: " << ec.message() << std::endl;
         return false;
       }
     }
     
 #ifndef NDEBUG
-    std::cout << "FTP Server created." << std::endl << "Listening at address " << acceptor_.local_endpoint().address() << " on port " << acceptor_.local_endpoint().port() << ":" << std::endl;
+    output_ << "FTP Server created." << std::endl << "Listening at address " << acceptor_.local_endpoint().address() << " on port " << acceptor_.local_endpoint().port() << ":" << std::endl;
 #endif // NDEBUG
 
     acceptor_.async_accept(ftp_session->getSocket()
@@ -126,18 +129,18 @@ namespace fineftp
     if (error)
     {
 #ifndef NDEBUG
-      std::cerr << "Error handling connection: " << error.message() << std::endl;
+      error_ << "Error handling connection: " << error.message() << std::endl;
 #endif
       return;
     }
 
 #ifndef NDEBUG
-    std::cout << "FTP Client connected: " << ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << ftp_session->getSocket().remote_endpoint().port() << std::endl;
+    output_ << "FTP Client connected: " << ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << ftp_session->getSocket().remote_endpoint().port() << std::endl;
 #endif
 
     ftp_session->start();
 
-    auto new_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; });
+    auto new_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
 
     acceptor_.async_accept(new_session->getSocket()
                           , [this, new_session](auto ec)

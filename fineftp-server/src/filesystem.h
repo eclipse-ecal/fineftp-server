@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <iostream>
 
 #include <sys/stat.h>
 
@@ -68,7 +69,7 @@ namespace fineftp
   #endif 
     };
 
-    std::map<std::string, FileStatus> dirContent(const std::string& path);
+    std::map<std::string, FileStatus> dirContent(const std::string& path, std::ostream& error);
 
     std::string cleanPath(const std::string& path, bool path_is_windows_path, char output_separator);
 

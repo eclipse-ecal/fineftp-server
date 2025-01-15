@@ -1,9 +1,11 @@
 #include "ftp_session.h"
 
+#include <asio.hpp>
+
 #include <algorithm>
 #include <cassert> // assert
 #include <cctype>  // std::iscntrl, toupper
-#include <chrono>
+#include <chrono>   // IWYU pragma: keep (it is used for special preprocessor defines)
 #include <cstddef>
 #include <cstdio>
 #include <fstream>
@@ -28,6 +30,11 @@
 #include <sys/stat.h>
 
 #ifdef WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
+  #include <windows.h>
   #include "win_str_convert.h"
 #else
   #include <unistd.h>
@@ -37,7 +44,7 @@
 namespace fineftp
 {
 
-  FtpSession::FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler)
+  FtpSession::FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler, std::ostream& output, std::ostream& error)
     : completion_handler_   (completion_handler)
     , user_database_        (user_database)
     , io_service_           (io_service)
@@ -49,13 +56,15 @@ namespace fineftp
     , data_acceptor_        (io_service)
     , data_socket_strand_   (io_service)
     , timer_                (io_service)
+    , output_(output)
+    , error_(error)
   {
   }
 
   FtpSession::~FtpSession()
   {
 #ifndef NDEBUG
-    std::cout << "Ftp Session shutting down" << std::endl;
+    output_ << "Ftp Session shutting down" << std::endl;
 #endif // !NDEBUG
 
     {
@@ -85,7 +94,7 @@ namespace fineftp
   {
     asio::error_code ec;
     command_socket_.set_option(asio::ip::tcp::no_delay(true), ec);
-    if (ec) std::cerr << "Unable to set socket option tcp::no_delay: " << ec.message() << std::endl;
+    if (ec) error_ << "Unable to set socket option tcp::no_delay: " << ec.message() << std::endl;
 
     command_strand_.post([me = shared_from_this()]() { me->readFtpCommand(); });
     sendFtpMessage(FtpMessage(FtpReplyCode::SERVICE_READY_FOR_NEW_USER, "Welcome to fineFTP Server"));
@@ -121,7 +130,7 @@ namespace fineftp
   void FtpSession::startSendingMessages()
   {
 #ifndef NDEBUG
-    std::cout << "FTP >> " << command_output_queue_.front() << std::endl;
+    output_ << "FTP >> " << command_output_queue_.front() << std::endl;
 #endif
 
     asio::async_write(command_socket_
@@ -150,7 +159,7 @@ namespace fineftp
                         }
                         else
                         {
-                          std::cerr << "Command write error for message " << me->command_output_queue_.front() << ec.message() << std::endl;
+                          me->error_ << "Command write error for message " << me->command_output_queue_.front() << ec.message() << std::endl;
                         }
                       }
                     ));
@@ -165,12 +174,12 @@ namespace fineftp
                           {
                             if (ec != asio::error::eof)
                             {
-                              std::cerr << "read_until error: " << ec.message() << std::endl;
+                              me->error_ << "read_until error: " << ec.message() << std::endl;
                             }
 #ifndef NDEBUG
                             else
                             {
-                              std::cout << "Control connection closed by client." << std::endl;
+                              me->output_ << "Control connection closed by client." << std::endl;
                             }
 #endif // !NDEBUG
                             // Close the data connection, if it is open
@@ -198,7 +207,7 @@ namespace fineftp
 
                           stream.ignore(2); // Remove the "\r\n"
 #ifndef NDEBUG
-                          std::cout << "FTP << " << packet_string << std::endl;
+                          me->output_ << "FTP << " << packet_string << std::endl;
 #endif
 
                           me->handleFtpCommand(packet_string);
@@ -412,7 +421,7 @@ namespace fineftp
       data_acceptor_.close(ec);
       if (ec)
       {
-        std::cerr << "Error closing data acceptor: " << ec.message() << std::endl;
+        error_ << "Error closing data acceptor: " << ec.message() << std::endl;
       }
     }
 
@@ -423,7 +432,7 @@ namespace fineftp
       data_acceptor_.open(endpoint.protocol(), ec);
       if (ec)
       {
-        std::cerr << "Error opening data acceptor: " << ec.message() << std::endl;
+        error_ << "Error opening data acceptor: " << ec.message() << std::endl;
         sendFtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
         return;
       }
@@ -433,7 +442,7 @@ namespace fineftp
       data_acceptor_.bind(endpoint, ec);
       if (ec)
       {
-        std::cerr << "Error binding data acceptor: " << ec.message() << std::endl;
+        error_ << "Error binding data acceptor: " << ec.message() << std::endl;
         sendFtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
         return;
       }
@@ -443,7 +452,7 @@ namespace fineftp
       data_acceptor_.listen(asio::socket_base::max_connections, ec);
       if (ec)
       {
-        std::cerr << "Error listening on data acceptor: " << ec.message() << std::endl;
+        error_ << "Error listening on data acceptor: " << ec.message() << std::endl;
         sendFtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
         return;
       }
@@ -1060,7 +1069,7 @@ namespace fineftp
         if (dir_status.canOpenDir())
         {
           sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending directory listing");
-          sendDirectoryListing(Filesystem::dirContent(local_path));
+          sendDirectoryListing(Filesystem::dirContent(local_path, error_));
           return;
         }
         else
@@ -1108,7 +1117,7 @@ namespace fineftp
         if (dir_status.canOpenDir())
         {
           sendFtpMessage(FtpReplyCode::FILE_STATUS_OK_OPENING_DATA_CONNECTION, "Sending name list");
-          sendNameList(Filesystem::dirContent(local_path));
+          sendNameList(Filesystem::dirContent(local_path, error_));
           return;
         }
         else
@@ -1374,7 +1383,7 @@ namespace fineftp
 
                                 if (ec)
                                 {
-                                  std::cerr << "Data write error: " << ec.message() << std::endl;
+                                  me->error_ << "Data write error: " << ec.message() << std::endl;
                                   return;
                                 }
 
@@ -1415,7 +1424,7 @@ namespace fineftp
                                 {
                                   if (ec)
                                   {
-                                    std::cerr << "Data transfer aborted: " << ec.message() << std::endl;
+                                    me->error_ << "Data transfer aborted: " << ec.message() << std::endl;
                                     me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
                                     return;
                                   }

@@ -283,7 +283,7 @@ namespace Filesystem
     return can_open_dir;
   }
 
-  std::map<std::string, FileStatus> dirContent(const std::string& path)
+  std::map<std::string, FileStatus> dirContent(const std::string& path, std::ostream& error)
   {
     std::map<std::string, FileStatus> content;
 #ifdef WIN32
@@ -297,7 +297,7 @@ namespace Filesystem
     hFind = FindFirstFileW(w_find_file_path.c_str(), &ffd);
     if (hFind == INVALID_HANDLE_VALUE)
     {
-      std::cerr << "FindFirstFile Error" << std::endl;
+      error << "FindFirstFile Error" << std::endl;
       return content;
     }
 
@@ -312,7 +312,7 @@ namespace Filesystem
     struct dirent *dirp = nullptr;
     if(dp == nullptr)
     {
-        std::cerr << "Error opening directory: " << strerror(errno) << std::endl;
+        error << "Error opening directory: " << strerror(errno) << std::endl;
         return content;
     }
 
