@@ -15,7 +15,7 @@ You can easily embed this library into your own project in order to create an em
 - User authentication (and anonymous user without authentication)
 - Individual local home path for each user
 - Access control on a per-user-basis
-- UTF8 support (On Windows MSVC only)
+- UTF8 support (On Windows MSVC only, MinGW builds will lack UTF8 support)
 
 *fineFTP does not support any kind of encryption. You should only use fineFTP in trusted networks.*
 
