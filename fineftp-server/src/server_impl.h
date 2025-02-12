@@ -21,8 +21,8 @@ namespace fineftp
   class FtpServerImpl : public std::enable_shared_from_this<FtpServerImpl>
   {
   public:
-    static std::shared_ptr<FtpServerImpl> create(const std::string& address, uint16_t port);
-    
+    FtpServerImpl(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
+
   private:
     FtpServerImpl(const std::string& address, uint16_t port);
 
@@ -68,5 +68,8 @@ namespace fineftp
 
     mutable std::mutex                                session_list_mutex_;      //!< Mutex protecting the list of current sessions
     std::map<FtpSession*, std::weak_ptr<FtpSession>>  session_list_;            //!< List of sessions. Only store weak_ptr, so the sessions can delete themselves. This list is used to stop sessions and count connections. The raw pointers are used to identify the entry even while a session is currently in the destructor, as there is no cross-plattform way of obtaining the raw pointer from the weak pointer in that case.
+
+    std::ostream& output_;  /* Normal output log */
+    std::ostream& error_;   /* Error output log */
   };
 }

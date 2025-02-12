@@ -33,7 +33,7 @@ namespace fineftp
   // Public API
   ////////////////////////////////////////////////////////
   public:
-    FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void(FtpSession*)>& completion_handler);
+    FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void(FtpSession*)>& completion_handler, std::ostream& output, std::ostream& error);
 
     // Copy (disabled, as we are inheriting from shared_from_this)
     FtpSession(const FtpSession&)            = delete;
@@ -210,5 +210,8 @@ namespace fineftp
     std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
 
     asio::steady_timer                             timer_;
+
+    std::ostream& output_;  /* Normal output log */
+    std::ostream& error_;   /* Error output log */
   };
 }

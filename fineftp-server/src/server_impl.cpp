@@ -20,11 +20,14 @@ namespace fineftp
     return std::shared_ptr<FtpServerImpl>(new FtpServerImpl(address, port));
   }
 
-  FtpServerImpl::FtpServerImpl(const std::string& address, uint16_t port)
-    : port_                 (port)
+  FtpServerImpl::FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
+    : ftp_users_            (output, error)
+    , port_                 (port)
     , address_              (address)
     , is_stopped_           (false)
     , acceptor_             (io_service_)
+    , output_               (output)
+    , error_                (error)
   {}
 
   FtpServerImpl::~FtpServerImpl()
@@ -49,7 +52,7 @@ namespace fineftp
     const asio::ip::tcp::endpoint endpoint(asio::ip::make_address(address_, make_address_ec), port_);
     if (make_address_ec)
     {
-      std::cerr << "Error creating address from string \"" << address_<< "\": " << make_address_ec.message() << std::endl;
+      error_ << "Error creating address from string \"" << address_<< "\": " << make_address_ec.message() << std::endl;
       return false;
     }
     
@@ -60,7 +63,7 @@ namespace fineftp
       acceptor_.open(endpoint.protocol(), ec);
       if (ec)
       {
-        std::cerr << "Error opening acceptor: " << ec.message() << std::endl;
+        error_ << "Error opening acceptor: " << ec.message() << std::endl;
         return false;
       }
     }
@@ -85,7 +88,7 @@ namespace fineftp
       acceptor_.bind(endpoint, ec);
       if (ec)
       {
-        std::cerr << "Error binding acceptor: " << ec.message() << std::endl;
+        error_ << "Error binding acceptor: " << ec.message() << std::endl;
         return false;
       }
     }
@@ -97,7 +100,7 @@ namespace fineftp
       acceptor_.listen(asio::socket_base::max_listen_connections, ec);
       if (ec)
       {
-        std::cerr << "Error listening on acceptor: " << ec.message() << std::endl;
+        error_ << "Error listening on acceptor: " << ec.message() << std::endl;
         return false;
       }
     }
@@ -105,7 +108,7 @@ namespace fineftp
 #ifndef NDEBUG
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
-      std::cout << "FTP Server created." << std::endl << "Listening at address " << acceptor_.local_endpoint().address() << " on port " << acceptor_.local_endpoint().port() << ":" << std::endl;
+      output_ << "FTP Server created." << std::endl << "Listening at address " << acceptor_.local_endpoint().address() << " on port " << acceptor_.local_endpoint().port() << ":" << std::endl;
     }
 #endif // NDEBUG
 
@@ -202,7 +205,7 @@ namespace fineftp
                                 }
 
 #ifndef NDEBUG
-                                std::cout << "FTP Client connected: " << new_ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << new_ftp_session->getSocket().remote_endpoint().port() << std::endl;
+                                output_ << "FTP Client connected: " << new_ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << new_ftp_session->getSocket().remote_endpoint().port() << std::endl;
 #endif
                                 // TODO: review if this is thread safe, if right here the ftp server is shut down and the acceptor is closed. I think, that then the session will still be added to the list of open sessions and kept open.
 
