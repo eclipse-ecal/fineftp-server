@@ -184,7 +184,7 @@ namespace fineftp
                           auto trimmed_message = me->command_output_queue_.front();
                           trimmed_message.erase(trimmed_message.find_last_not_of("\r\n") + 1);
 
-                          error_ << "Command write error for message " << trimmed_message << ": " << ec.message() << std::endl;
+                          me->error_ << "Command write error for message " << trimmed_message << ": " << ec.message() << std::endl;
                         }
                       }
                     ));

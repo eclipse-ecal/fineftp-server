@@ -21,10 +21,10 @@ namespace fineftp
   class FtpServerImpl : public std::enable_shared_from_this<FtpServerImpl>
   {
   public:
-    FtpServerImpl(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
+    static std::shared_ptr<FtpServerImpl> create(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
 
   private:
-    FtpServerImpl(const std::string& address, uint16_t port);
+    FtpServerImpl(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
 
   public:
     // Copy (disabled)

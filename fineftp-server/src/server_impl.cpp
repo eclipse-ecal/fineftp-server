@@ -15,9 +15,9 @@
 
 namespace fineftp
 {
-  std::shared_ptr<FtpServerImpl> FtpServerImpl::create(const std::string& address, uint16_t port)
+  std::shared_ptr<FtpServerImpl> FtpServerImpl::create(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error)
   {
-    return std::shared_ptr<FtpServerImpl>(new FtpServerImpl(address, port));
+    return std::shared_ptr<FtpServerImpl>(new FtpServerImpl(address, port, output, error));
   }
 
   FtpServerImpl::FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
@@ -68,18 +68,17 @@ namespace fineftp
       }
     }
 
-    // TODO: Add the code again to use reuse_address option
-    //{
-    //  const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
+    {
+      const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
 
-    //  asio::error_code ec;
-    //  acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true), ec);
-    //  if (ec)
-    //  {
-    //    std::cerr << "Error setting reuse_address option: " << ec.message() << std::endl;
-    //    return false;
-    //  }
-    //}
+      asio::error_code ec;
+      acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true), ec);
+      if (ec)
+      {
+        error_ << "Error setting reuse_address option: " << ec.message() << std::endl;
+        return false;
+      }
+    }
     
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
@@ -178,7 +177,7 @@ namespace fineftp
                                 }
                               };
 
-    auto new_ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, shutdown_callback);
+    auto new_ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, shutdown_callback, output_, error_);
 
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
@@ -205,7 +204,7 @@ namespace fineftp
                                 }
 
 #ifndef NDEBUG
-                                output_ << "FTP Client connected: " << new_ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << new_ftp_session->getSocket().remote_endpoint().port() << std::endl;
+                                me->output_ << "FTP Client connected: " << new_ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << new_ftp_session->getSocket().remote_endpoint().port() << std::endl;
 #endif
                                 // TODO: review if this is thread safe, if right here the ftp server is shut down and the acceptor is closed. I think, that then the session will still be added to the list of open sessions and kept open.
 
