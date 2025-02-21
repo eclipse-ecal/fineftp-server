@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.5.1)
+# CMake 3.13 required by GTest
+cmake_minimum_required(VERSION 3.13)
 
 include(CMakeDependentOption)
 
