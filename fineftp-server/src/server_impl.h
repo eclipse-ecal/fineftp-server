@@ -55,7 +55,7 @@ namespace fineftp
     const std::string address_;
 
     std::vector<std::thread> thread_pool_;
-    asio::io_service         io_service_;
+    asio::io_context         io_context_;
     asio::ip::tcp::acceptor  acceptor_;
 
     std::atomic<int> open_connection_count_;

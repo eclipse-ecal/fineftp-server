@@ -33,7 +33,7 @@ namespace fineftp
   // Public API
   ////////////////////////////////////////////////////////
   public:
-    FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void()>& completion_handler, std::ostream& output, std::ostream& error);
+    FtpSession(asio::io_context& io_context, const UserDatabase& user_database, const std::function<void()>& completion_handler, std::ostream& output, std::ostream& error);
 
     // Copy (disabled, as we are inheriting from shared_from_this)
     FtpSession(const FtpSession&)            = delete;
@@ -182,11 +182,11 @@ namespace fineftp
     std::shared_ptr<FtpUser> logged_in_user_;
 
     // "Global" io service
-    asio::io_service&        io_service_;
+    asio::io_context&        io_context_;
 
     // Command Socket.
     // Note that the command_strand_ is used to serialize access to all of the 9 member variables following it.
-    asio::io_service::strand command_strand_;
+    asio::io_context::strand command_strand_;
     asio::ip::tcp::socket    command_socket_;
     asio::streambuf          command_input_stream_;
     std::deque<std::string>  command_output_queue_;
@@ -204,7 +204,7 @@ namespace fineftp
     asio::ip::tcp::acceptor                        data_acceptor_;
 
     // Note that the data_socket_strand_ is used to serialize access to the 2 member variables following it.
-    asio::io_service::strand                       data_socket_strand_;
+    asio::io_context::strand                       data_socket_strand_;
     std::weak_ptr<asio::ip::tcp::socket>           data_socket_weakptr_;
     std::deque<std::shared_ptr<std::vector<char>>> data_buffer_;
 

@@ -20,7 +20,7 @@ namespace fineftp
     : ftp_users_            (output, error)
     , port_                 (port)
     , address_              (address)
-    , acceptor_             (io_service_)
+    , acceptor_             (io_context_)
     , open_connection_count_(0)
     , output_               (output)
     , error_                (error)
@@ -43,7 +43,7 @@ namespace fineftp
 
   bool FtpServerImpl::start(size_t thread_count)
   {
-    auto ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
+    auto ftp_session = std::make_shared<FtpSession>(io_context_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
 
     // set up the acceptor to listen on the tcp port
     asio::error_code make_address_ec;
@@ -108,7 +108,7 @@ namespace fineftp
 
     for (size_t i = 0; i < thread_count; i++)
     {
-      thread_pool_.emplace_back([this] {io_service_.run(); });
+      thread_pool_.emplace_back([this] {io_context_.run(); });
     }
     
     return true;
@@ -116,7 +116,7 @@ namespace fineftp
 
   void FtpServerImpl::stop()
   {
-    io_service_.stop();
+    io_context_.stop();
     for (std::thread& thread : thread_pool_)
     {
       thread.join();
@@ -140,7 +140,7 @@ namespace fineftp
 
     ftp_session->start();
 
-    auto new_session = std::make_shared<FtpSession>(io_service_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
+    auto new_session = std::make_shared<FtpSession>(io_context_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
 
     acceptor_.async_accept(new_session->getSocket()
                           , [this, new_session](auto ec)
