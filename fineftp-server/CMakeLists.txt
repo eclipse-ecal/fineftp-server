@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.5.1)
+# CMake 3.8 required for cxx_std_14
+cmake_minimum_required(VERSION 3.8...4.0)
 
 include("${CMAKE_CURRENT_LIST_DIR}/version.cmake")
 project(server VERSION ${FINEFTP_SERVER_VERSION_MAJOR}.${FINEFTP_SERVER_VERSION_MINOR}.${FINEFTP_SERVER_VERSION_PATCH})
