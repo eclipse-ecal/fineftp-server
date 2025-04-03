@@ -121,9 +121,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 ##################################
 
-# Mirror the folder structure in an IDE
-include(sourcetree.cmake)
-create_source_tree(${includes} ${sources})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES 
+    ${includes}
+    ${sources}
+)
 
 ################################################################################
 ### Installation rules
