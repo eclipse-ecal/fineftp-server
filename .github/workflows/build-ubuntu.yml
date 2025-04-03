@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         library_type: [static, shared]
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, ubuntu-24.04-arm, ubuntu-22.04-arm]
 
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
@@ -34,6 +34,13 @@ jobs:
           echo "build_shared_libs=ON"   >> "$GITHUB_ENV"
           echo "package_postfix=shared" >> "$GITHUB_ENV"
         fi
+
+        # Get the ubuntu version
+        os_version=$(lsb_release -r | awk '{print $2}')
+        echo "os_name=ubuntu-${os_version}" >> "$GITHUB_ENV"
+
+        # Get cpu architecture for the package name (therefore the dpkg architecture, which differs from the arch architecture)
+        echo "cpu_architecture=$(dpkg --print-architecture)" >> "$GITHUB_ENV"
         
     - name: Checkout
       uses: actions/checkout@v4
@@ -76,14 +83,14 @@ jobs:
 
     - name: Rename .deb installer
       run: |
-        mv *.deb '${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-${{ matrix.os }}-${{ env.package_postfix }}.deb'
+        mv *.deb '${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-${{ env.os_name }}_${{ env.cpu_architecture }}-${{ env.package_postfix }}.deb'
       shell: bash
       working-directory: ${{github.workspace}}/_build/_package/
 
     - name: Upload binaries
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-${{ matrix.os }}-${{ env.package_postfix }}
+        name: ${{ env.PROJECT_NAME }}-${{ env.CMAKE_PROJECT_VERSION }}-${{ env.os_name }}_${{ env.cpu_architecture }}-${{ env.package_postfix }}
         path: ${{github.workspace}}/_build/_package/*.deb
 
     ############################################
