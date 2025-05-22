@@ -14,9 +14,10 @@ jobs:
   build-ubuntu:
 
     strategy:
+      fail-fast: false
       matrix:
         library_type: [static, shared]
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, ubuntu-24.04-arm, ubuntu-22.04-arm]
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-24.04-arm, ubuntu-22.04-arm]
 
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
