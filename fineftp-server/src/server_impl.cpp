@@ -68,6 +68,7 @@ namespace fineftp
       }
     }
 
+    // TODO: Add the code again to use reuse_address option
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);
 
