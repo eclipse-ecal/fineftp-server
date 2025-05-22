@@ -1,8 +1,6 @@
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.13...4.0)
 
 project(fineftp_example)
-
-set(CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG  TRUE)
 find_package(fineftp REQUIRED)
@@ -17,4 +15,8 @@ add_executable (${PROJECT_NAME}
 
 target_link_libraries (${PROJECT_NAME}
     fineftp::server
+)
+
+target_compile_features(${PROJECT_NAME}
+    PUBLIC cxx_std_14
 )

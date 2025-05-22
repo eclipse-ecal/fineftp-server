@@ -6,6 +6,10 @@ FineFTP is a minimal FTP server library for Windows and Unix flavors. The projec
 
 You can easily embed this library into your own project in order to create an embedded FTP Server. It was developed and tested on Windows 10 (Visual Studio 2015 and newer, MinGW) and Ubuntu 18.04 - 22.04 (gcc 7.4.0 - 11.2.0). It should also run fine on macOS.
 
+## Dependencies
+
+- [asio](https://github.com/chriskohlhoff/asio)
+
 ## Features
 
 - FTP Passive mode (the only mode you need nowadays)

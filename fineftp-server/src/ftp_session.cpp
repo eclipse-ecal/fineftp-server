@@ -44,18 +44,18 @@
 namespace fineftp
 {
 
-  FtpSession::FtpSession(asio::io_service& io_service, const UserDatabase& user_database, const std::function<void(FtpSession*)>& completion_handler, std::ostream& output, std::ostream& error)
+  FtpSession::FtpSession(asio::io_context& io_context, const UserDatabase& user_database, const std::function<void(FtpSession*)>& completion_handler, std::ostream& output, std::ostream& error)
     : completion_handler_   (completion_handler)
     , user_database_        (user_database)
-    , io_service_           (io_service)
-    , command_strand_       (io_service)
-    , command_socket_       (io_service)
+    , io_context_           (io_context)
+    , command_strand_       (io_context)
+    , command_socket_       (io_context)
     , data_type_binary_     (false)
     , shutdown_requested_   (false)
     , ftp_working_directory_("/")
-    , data_acceptor_        (io_service)
-    , data_socket_strand_   (io_service)
-    , timer_                (io_service)
+    , data_acceptor_        (io_context)
+    , data_socket_strand_   (io_context)
+    , timer_                (io_context)
     , output_(output)
     , error_(error)
   {
@@ -137,7 +137,7 @@ namespace fineftp
 
   void FtpSession::sendRawFtpMessage(const std::string& raw_message)
   {
-    command_strand_.post([me = shared_from_this(), raw_message]()
+    asio::post(command_strand_, [me = shared_from_this(), raw_message]()
                          {
                            const bool write_in_progress = !me->command_output_queue_.empty();
                            me->command_output_queue_.push_back(raw_message);
@@ -213,7 +213,7 @@ namespace fineftp
                               me->data_acceptor_.close(ec_);
                             }
 
-                            me->data_socket_strand_.post([me]()
+                            asio::post(me->data_socket_strand_, [me]()
                             {
                               auto data_socket = me->data_socket_weakptr_.lock();
                               if (data_socket)
@@ -474,7 +474,7 @@ namespace fineftp
     }
     {
       asio::error_code ec;
-      data_acceptor_.listen(asio::socket_base::max_connections, ec);
+      data_acceptor_.listen(asio::socket_base::max_listen_connections, ec);
       if (ec)
       {
         error_ << "Error listening on data acceptor: " << ec.message() << std::endl;
@@ -1230,7 +1230,7 @@ namespace fineftp
 
   void FtpSession::sendDirectoryListing(const std::map<std::string, Filesystem::FileStatus>& directory_content)
   {
-    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
 
     data_acceptor_.async_accept(*data_socket
                               , data_socket_strand_.wrap([data_socket, directory_content, me = shared_from_this()](auto ec)
@@ -1273,7 +1273,7 @@ namespace fineftp
 
   void FtpSession::sendNameList(const std::map<std::string, Filesystem::FileStatus>& directory_content)
   {
-    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
 
     data_acceptor_.async_accept(*data_socket
                               , data_socket_strand_.wrap([data_socket, directory_content, me = shared_from_this()](auto ec)
@@ -1308,7 +1308,7 @@ namespace fineftp
 
   void FtpSession::sendFile(const std::shared_ptr<ReadableFile>& file)
   {
-    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
 
     data_acceptor_.async_accept(*data_socket
                               , data_socket_strand_.wrap([data_socket, file, me = shared_from_this()](auto ec)
@@ -1377,7 +1377,7 @@ namespace fineftp
 
   void FtpSession::addDataToBufferAndSend(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
-    data_socket_strand_.post([me = shared_from_this(), data, data_socket]()
+    asio::post(data_socket_strand_, [me = shared_from_this(), data, data_socket]()
                             {
                               const bool write_in_progress = (!me->data_buffer_.empty());
 
@@ -1392,7 +1392,7 @@ namespace fineftp
 
   void FtpSession::writeDataToSocket(const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
-    data_socket_strand_.post(
+    asio::post(data_socket_strand_,
       [me = shared_from_this(), data_socket]()
       {
         auto data = me->data_buffer_.front();
@@ -1442,7 +1442,7 @@ namespace fineftp
 
   void FtpSession::receiveFile(const std::shared_ptr<WriteableFile>& file)
   {
-    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_service_);
+    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
 
     data_acceptor_.async_accept(*data_socket
                               , data_socket_strand_.wrap([data_socket, file, me = shared_from_this()](auto ec)
@@ -1494,7 +1494,7 @@ namespace fineftp
 
   void FtpSession::endDataReceiving(const std::shared_ptr<WriteableFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
   {
-    data_socket_strand_.post([me = shared_from_this(), file, data_socket]()
+    asio::post(data_socket_strand_, [me = shared_from_this(), file, data_socket]()
                              {
                                file->close();
                                me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");

@@ -25,7 +25,7 @@ namespace fineftp
     , port_                 (port)
     , address_              (address)
     , is_stopped_           (false)
-    , acceptor_             (io_service_)
+    , acceptor_             (io_context_)
     , output_               (output)
     , error_                (error)
   {}
@@ -116,7 +116,7 @@ namespace fineftp
 
     for (size_t i = 0; i < thread_count; i++)
     {
-      thread_pool_.emplace_back([this] {io_service_.run(); });
+      thread_pool_.emplace_back([this] {io_context_.run(); });
     }
     
     return true;
@@ -178,7 +178,7 @@ namespace fineftp
                                 }
                               };
 
-    auto new_ftp_session = std::make_shared<FtpSession>(io_service_, ftp_users_, shutdown_callback, output_, error_);
+    auto new_ftp_session = std::make_shared<FtpSession>(io_context_, ftp_users_, shutdown_callback, output_, error_);
 
     {
       const std::lock_guard<std::mutex> acceptor_lock(acceptor_mutex_);

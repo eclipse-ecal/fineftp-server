@@ -61,7 +61,7 @@ namespace fineftp
     std::atomic<bool> is_stopped_;                                              //! Tells whether the server has been stopped. When stopped, it will refuse to accept new connections.
 
     std::vector<std::thread> thread_pool_;
-    asio::io_service         io_service_;
+    asio::io_context         io_context_;
 
     mutable std::mutex       acceptor_mutex_;                                   //!< Mutex protecting the acceptor. That is necessary, as the user may stop the server (and therefore close the acceptor) from another thread.
     asio::ip::tcp::acceptor  acceptor_;                                         //!< The acceptor waiting for new sessions

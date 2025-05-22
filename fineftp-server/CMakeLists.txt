@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.5.1)
+# CMake 3.8 required for cxx_std_14
+cmake_minimum_required(VERSION 3.8...4.0)
 
 include("${CMAKE_CURRENT_LIST_DIR}/version.cmake")
 project(server VERSION ${FINEFTP_SERVER_VERSION_MAJOR}.${FINEFTP_SERVER_VERSION_MINOR}.${FINEFTP_SERVER_VERSION_PATCH})
@@ -120,9 +121,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 ##################################
 
-# Mirror the folder structure in an IDE
-include(sourcetree.cmake)
-create_source_tree(${includes} ${sources})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES 
+    ${includes}
+    ${sources}
+)
 
 ################################################################################
 ### Installation rules
