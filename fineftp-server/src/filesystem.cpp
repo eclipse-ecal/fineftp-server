@@ -16,7 +16,7 @@
 
 #include <sys/stat.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 
   #ifndef NOMINMAX
     #define NOMINMAX
@@ -27,13 +27,13 @@
   #include <windows.h>
   #include <win_str_convert.h>
 
-#else // WIN32
+#else // _WIN32
 
 #include <cerrno>
 #include <cstring>
 #include <dirent.h>
 
-#endif // WIN32
+#endif // _WIN32
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Filesystem
@@ -48,12 +48,12 @@ namespace Filesystem
     : path_(path)
     , file_status_{}
   {
-#ifdef WIN32
+#ifdef _WIN32
     const std::wstring w_path_ = StrConvert::Utf8ToWide(path);
     const int error_code = _wstat64(w_path_.c_str(), &file_status_);
-#else // WIN32
+#else // _WIN32
     const int error_code = stat(path.c_str(), &file_status_);
-#endif // WIN32
+#endif // _WIN32
     is_ok_ = (error_code == 0);
   }
 
@@ -71,12 +71,12 @@ namespace Filesystem
     case S_IFREG:  return FileType::RegularFile;
     case S_IFDIR:  return FileType::Dir;
     case S_IFCHR:  return FileType::CharacterDevice;
-#ifndef WIN32
+#ifndef _WIN32
     case S_IFBLK:  return FileType::BlockDevice;
     case S_IFIFO:  return FileType::Fifo;
     case S_IFLNK:  return FileType::SymbolicLink;
     case S_IFSOCK: return FileType::Socket;
-#endif // !WIN32
+#endif // !_WIN32
     default:       return FileType::Unknown;
     }
 
@@ -90,7 +90,7 @@ namespace Filesystem
     return file_status_.st_size;
   }
 
-#ifdef WIN32
+#ifdef _WIN32
   bool FileStatus::permissionRootRead()     const { return 0 != (file_status_.st_mode & S_IREAD); }
   bool FileStatus::permissionRootWrite()    const { return 0 != (file_status_.st_mode & S_IWRITE); }
   bool FileStatus::permissionRootExecute()  const { return 0 != (file_status_.st_mode & S_IEXEC); }
@@ -100,7 +100,7 @@ namespace Filesystem
   bool FileStatus::permissionOwnerRead()    const { return 0 != (file_status_.st_mode & S_IREAD); }
   bool FileStatus::permissionOwnerWrite()   const { return 0 != (file_status_.st_mode & S_IWRITE); }
   bool FileStatus::permissionOwnerExecute() const { return 0 != (file_status_.st_mode & S_IEXEC); }
-#else // WIN32
+#else // _WIN32
   bool FileStatus::permissionRootRead()     const { return 0 != (file_status_.st_mode & S_IRUSR); }
   bool FileStatus::permissionRootWrite()    const { return 0 != (file_status_.st_mode & S_IWUSR); }
   bool FileStatus::permissionRootExecute()  const { return 0 != (file_status_.st_mode & S_IXUSR); }
@@ -110,7 +110,7 @@ namespace Filesystem
   bool FileStatus::permissionOwnerRead()    const { return 0 != (file_status_.st_mode & S_IROTH); }
   bool FileStatus::permissionOwnerWrite()   const { return 0 != (file_status_.st_mode & S_IWOTH); }
   bool FileStatus::permissionOwnerExecute() const { return 0 != (file_status_.st_mode & S_IXOTH); }
-#endif // WIN32
+#endif // _WIN32
 
 
   std::string FileStatus::permissionString() const
@@ -120,7 +120,7 @@ namespace Filesystem
     if (!is_ok_)
       return permission_string;
 
-#ifdef WIN32
+#ifdef _WIN32
     // Root
     permission_string[0] = ((file_status_.st_mode & S_IREAD) != 0)  ? 'r' : '-';
     permission_string[1] = ((file_status_.st_mode & S_IWRITE) != 0) ? 'w' : '-';
@@ -133,7 +133,7 @@ namespace Filesystem
     permission_string[6] = ((file_status_.st_mode & S_IREAD) != 0)  ? 'r' : '-';
     permission_string[7] = ((file_status_.st_mode & S_IWRITE) != 0) ? 'w' : '-';
     permission_string[8] = ((file_status_.st_mode & S_IEXEC) != 0)  ? 'x' : '-';
-#else // WIN32
+#else // _WIN32
     // Root
     permission_string[0] = ((file_status_.st_mode & S_IRUSR) != 0) ? 'r' : '-';
     permission_string[1] = ((file_status_.st_mode & S_IWUSR) != 0) ? 'w' : '-';
@@ -146,7 +146,7 @@ namespace Filesystem
     permission_string[6] = ((file_status_.st_mode & S_IROTH) != 0) ? 'r' : '-';
     permission_string[7] = ((file_status_.st_mode & S_IWOTH) != 0) ? 'w' : '-';
     permission_string[8] = ((file_status_.st_mode & S_IXOTH) != 0) ? 'x' : '-';
-#endif // WIN32
+#endif // _WIN32
     return permission_string;
   }
 
@@ -257,7 +257,7 @@ namespace Filesystem
       return false;
 
     bool can_open_dir(false);
-#ifdef WIN32
+#ifdef _WIN32
     std::string find_file_path = path_ + "\\*";
     std::replace(find_file_path.begin(), find_file_path.end(), '/', '\\');
 
@@ -271,14 +271,14 @@ namespace Filesystem
       can_open_dir = true;
     }
     FindClose(hFind);
-#else // WIN32
+#else // _WIN32
     DIR *dp = opendir(path_.c_str());
     if (dp != nullptr)
     {
       can_open_dir = true;
       closedir(dp);
     }
-#endif // WIN32
+#endif // _WIN32
 
     return can_open_dir;
   }
@@ -286,7 +286,7 @@ namespace Filesystem
   std::map<std::string, FileStatus> dirContent(const std::string& path, std::ostream& error)
   {
     std::map<std::string, FileStatus> content;
-#ifdef WIN32
+#ifdef _WIN32
     std::string find_file_path = path + "\\*";
     std::replace(find_file_path.begin(), find_file_path.end(), '/', '\\');
 
@@ -307,7 +307,7 @@ namespace Filesystem
       content.emplace(file_name, FileStatus(path + "\\" + file_name));
     } while (FindNextFileW(hFind, &ffd) != 0);
     FindClose(hFind);
-#else // WIN32
+#else // _WIN32
     DIR *dp = opendir(path.c_str());
     struct dirent *dirp = nullptr;
     if(dp == nullptr)
@@ -322,7 +322,7 @@ namespace Filesystem
     }
     closedir(dp);
 
-#endif // WIN32
+#endif // _WIN32
     return content;
   }
 
@@ -465,13 +465,13 @@ namespace Filesystem
 
   std::string cleanPathNative(const std::string& path)
   {
-#ifdef WIN32
+#ifdef _WIN32
     constexpr bool path_is_windows_path = true;
     constexpr char separator = '\\';
-#else // WIN32
+#else // _WIN32
     constexpr bool path_is_windows_path = false;
     constexpr char separator = '/';
-#endif // WIN32
+#endif // _WIN32
     return cleanPath(path, path_is_windows_path, separator);
   }
 

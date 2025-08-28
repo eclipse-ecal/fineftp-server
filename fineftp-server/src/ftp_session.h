@@ -15,9 +15,9 @@
 #include "user_database.h"
 #include "ftp_user.h"
 
-#ifdef WIN32
+#ifdef _WIN32
   #include "win_str_convert.h"
-#endif // WIN32
+#endif // _WIN32
 
 namespace fineftp
 {
@@ -162,13 +162,13 @@ namespace fineftp
 
     FtpMessage executeCWD(const std::string& param);
 
-#ifdef WIN32
+#ifdef _WIN32
     /**
      * @brief Returns Windows' GetLastError() as human readable string
      * @return The message of the last error
      */
     static std::string GetLastErrorStr();
-#endif // WIN32
+#endif // _WIN32
 
   ////////////////////////////////////////////////////////
   // Member variables

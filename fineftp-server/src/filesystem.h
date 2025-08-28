@@ -62,9 +62,9 @@ namespace fineftp
     private:
       std::string path_;
       bool is_ok_;
-  #ifdef WIN32
+  #ifdef _WIN32
       struct __stat64 file_status_;
-  #else // WIN32
+  #else // _WIN32
       struct stat file_status_;
   #endif 
     };
