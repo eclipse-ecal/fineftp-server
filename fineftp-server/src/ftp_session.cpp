@@ -29,7 +29,7 @@
 
 #include <sys/stat.h>
 
-#ifdef WIN32
+#ifdef _WIN32
   #define WIN32_LEAN_AND_MEAN
   #ifndef NOMINMAX
     #define NOMINMAX
@@ -38,7 +38,7 @@
   #include "win_str_convert.h"
 #else
   #include <unistd.h>
-#endif // WIN32
+#endif // _WIN32
 
 
 namespace fineftp
@@ -535,7 +535,7 @@ namespace fineftp
 
     const std::string local_path = toLocalPath(param);
     
-#if defined(WIN32) && !defined(__GNUG__)
+#if defined(_WIN32) && !defined(__GNUG__)
     const auto file = ReadableFile::get(StrConvert::Utf8ToWide(local_path));
 #else
     const auto file = ReadableFile::get(local_path);
@@ -572,7 +572,7 @@ namespace fineftp
        std::ios::ate | (data_type_binary_ ? (std::ios::in | std::ios::binary) : (std::ios::in));
     std::fstream::pos_type file_size;
     {
-#if defined(WIN32) && !defined(__GNUG__)
+#if defined(_WIN32) && !defined(__GNUG__)
       std::ifstream file(StrConvert::Utf8ToWide(local_path), open_mode);
 #else
       std::ifstream file(local_path, open_mode);
@@ -648,11 +648,11 @@ namespace fineftp
 
     if (!file->good())
     {
-#ifdef WIN32
+#ifdef _WIN32
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer: " + GetLastErrorStr());
 #else
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
-#endif // WIN32
+#endif // _WIN32
 
       return;
     }
@@ -721,11 +721,11 @@ namespace fineftp
 
     if (!file->good())
     {
-#ifdef WIN32
+#ifdef _WIN32
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer: " + GetLastErrorStr());
 #else
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
-#endif // WIN32
+#endif // _WIN32
       return;
     }
 
@@ -803,7 +803,7 @@ namespace fineftp
         return;
       }
 
-#ifdef WIN32
+#ifdef _WIN32
 
       if (MoveFileW(StrConvert::Utf8ToWide(local_from_path).c_str(), StrConvert::Utf8ToWide(local_to_path).c_str()) != 0)
       {
@@ -815,7 +815,7 @@ namespace fineftp
         sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file: " + GetLastErrorStr());
         return;
       }
-#else // WIN32
+#else // _WIN32
       if (rename(local_from_path.c_str(), local_to_path.c_str()) == 0)
       {
         sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "OK");
@@ -826,7 +826,7 @@ namespace fineftp
         sendFtpMessage(FtpReplyCode::FILE_ACTION_NOT_TAKEN, "Error renaming file");
         return;
       }
-#endif // WIN32
+#endif // _WIN32
     }
     else
     {
@@ -870,7 +870,7 @@ namespace fineftp
       }
       else
       {
-#ifdef WIN32
+#ifdef _WIN32
         if (DeleteFileW(StrConvert::Utf8ToWide(local_path).c_str()) != 0)
         {
           sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully deleted file");
@@ -912,7 +912,7 @@ namespace fineftp
 
     const std::string local_path = toLocalPath(param);
 
-#ifdef WIN32
+#ifdef _WIN32
     if (RemoveDirectoryW(StrConvert::Utf8ToWide(local_path).c_str()) != 0)
     {
       sendFtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Successfully removed directory");
@@ -959,7 +959,7 @@ namespace fineftp
 
     auto local_path = toLocalPath(param);
 
-#ifdef WIN32
+#ifdef _WIN32
     LPSECURITY_ATTRIBUTES security_attributes = nullptr; // => Default security attributes
     if (CreateDirectoryW(StrConvert::Utf8ToWide(local_path).c_str(), security_attributes) != 0)
     {
@@ -1621,7 +1621,7 @@ namespace fineftp
     return FtpMessage(FtpReplyCode::FILE_ACTION_COMPLETED, "Working directory changed to " + ftp_working_directory_);
   }
 
-#ifdef WIN32
+#ifdef _WIN32
   std::string FtpSession::GetLastErrorStr()
   {
     const DWORD error = GetLastError();
@@ -1652,5 +1652,5 @@ namespace fineftp
 
     return ""; 
   }
-#endif //WIN32
+#endif //_WIN32
 }

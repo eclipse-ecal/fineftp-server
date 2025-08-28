@@ -12,9 +12,9 @@
 #include <utility>
 #include <vector>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <win_str_convert.h>
-#endif // WIN32
+#endif // _WIN32
 
 namespace
 {
@@ -30,9 +30,9 @@ namespace
   int system_execute(const std::string& command)
   {
     const int status = std::system(command.c_str());
-#ifdef WIN32
+#ifdef _WIN32
     return status;
-#else  // WIN32
+#else  // _WIN32
     if (WIFEXITED(status))
     {
       // Program has exited normally
@@ -43,7 +43,7 @@ namespace
       // Program has exited abnormally
       return -1;
     }
-#endif // WIN32
+#endif // _WIN32
 
   }
 
@@ -452,11 +452,11 @@ TEST(PermissionTest, RenameFile)
     const std::string ftp_source_path = "/" + dir_preparer.ftp_file_b1.string();
     const std::string ftp_target_path = "/" + dir_preparer.ftp_file_b1.string() + "_renamed.txt";
 
-#ifdef WIN32
+#ifdef _WIN32
                               const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                               const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
     const std::string curl_command = "curl -Q \"RNFR " + ftp_source_path + "\" "
                                     + " -Q \"RNTO " + ftp_target_path + "\" "
@@ -527,11 +527,11 @@ TEST(PermissionTest, RenameDir)
     const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
     const std::string ftp_target_path = "/" + dir_preparer.ftp_subdir_b_full.string() + "_renamed";
 
-#ifdef WIN32
+#ifdef _WIN32
                               const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                               const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
     const std::string curl_command = "curl -Q \"RNFR " + ftp_source_path + "\" "
                                     + " -Q \"RNTO " + ftp_target_path + "\" "
@@ -589,11 +589,11 @@ TEST(PermissionTest, DeleteFile)
 
     const std::string ftp_source_path = "/" + dir_preparer.ftp_file_b1.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                               const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                               const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
     const std::string curl_command = "curl -Q \"DELE " + ftp_source_path + "\" "
                                     + " -S -s "
@@ -654,11 +654,11 @@ TEST(PermissionTest, DeleteEmptyDir)
 
     const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_a_empty.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                               const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                               const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
     const std::string curl_command = "curl -Q \"RMD " + ftp_source_path + "\" "
                                     + " -S -s "
@@ -936,11 +936,11 @@ TEST(PermissionTest, DeleteFullDirWithRMD)
 
   const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                             const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                             const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
   const std::string curl_command = "curl -Q \"RMD " + ftp_source_path + "\" "
                                   + " -S -s "
@@ -974,11 +974,11 @@ TEST(PermissionTest, DeleteDirWithDELE)
 
   const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_a_empty.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                             const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                             const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
   const std::string curl_command = "curl -Q \"DELE " + ftp_source_path + "\" "
                                   + " -S -s "
@@ -1073,11 +1073,11 @@ TEST(PermissionTest, RenameNonExistingFile)
 
   const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                             const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                             const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
   const std::string curl_command = std::string("curl -Q \"RNFR /nonexisting_file\" ")
                                   + " -Q \"RNTO /someotherfile\" "
@@ -1106,11 +1106,11 @@ TEST(PermissionTest, RenameTargetExistsAlready)
 
   const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                             const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                             const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
   const std::string rename_source_file = "/" + dir_preparer.ftp_file_b1.string();
   const std::string rename_target_file = "/" + dir_preparer.ftp_file_b2.string();
@@ -1159,11 +1159,11 @@ TEST(PermissionTest, DeleteNonExistingWithDELE)
 
   const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                             const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                             const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
   const std::string curl_command = std::string("curl -Q \"DELE /nonexisting_file.txt\" ")
                                   + " -S -s "
@@ -1191,11 +1191,11 @@ TEST(PermissionTest, DeleteNonExistingWithRMD)
 
   const std::string ftp_source_path = "/" + dir_preparer.ftp_subdir_b_full.string();
 
-#ifdef WIN32
+#ifdef _WIN32
                             const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                             const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
   const std::string curl_command = std::string("curl -Q \"RMD /nonexisting_dir\" ")
                                   + " -S -s "

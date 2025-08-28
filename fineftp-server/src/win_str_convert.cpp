@@ -1,12 +1,12 @@
 #include "win_str_convert.h" // IWYU pragma: associated
 
-#ifdef WIN32
+#ifdef _WIN32
   #define WIN32_LEAN_AND_MEAN
   #ifndef NOMINMAX
     #define NOMINMAX
   #endif
   #include <windows.h> // IWYU pragma: keep
-#endif // WIN32
+#endif // _WIN32
 
 #include <string>
 
@@ -14,7 +14,7 @@ namespace fineftp
 {
   namespace StrConvert
   {
-#ifdef WIN32
+#ifdef _WIN32
     std::string WideToAnsi(const std::wstring& wstr)
     {
       const int count = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), static_cast<int>(wstr.length()), nullptr, 0, nullptr, nullptr);

@@ -16,9 +16,9 @@
 #include <thread>
 #include <vector>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <win_str_convert.h>
-#endif // WIN32
+#endif // _WIN32
 
 #if 1
 TEST(FineFTPTest, SimpleUploadDownload) {
@@ -373,11 +373,11 @@ TEST(FineFTPTest, ListAndRename)
                               auto upload_target_filename = std::to_string(i) + "_" + std::to_string(j) + ".txt";
                               auto rename_target_filename = std::to_string(i) + "_" + std::to_string(j) + "_renamed.txt";
 
-#ifdef WIN32
+#ifdef _WIN32
                               const std::string curl_output_file = "NUL";
-#else // WIN32
+#else // _WIN32
                               const std::string curl_output_file = "/dev/null";
-#endif // WIN32
+#endif // _WIN32
 
                               const std::string curl_command = "curl -Q \"RNFR " + upload_target_filename + "\" "
                                                               + " -Q \"RNTO " + rename_target_filename + "\" "
@@ -887,22 +887,22 @@ TEST(FineFTPTest, UTF8Paths)
 
   const std::string upload_subdir_utf8 = "dir_" + utf8_laughing_emoji + utf8_german_letter_UE;
   const std::string filename_utf8      = "file_" + utf8_beermug_emoji + utf8_greek_letter_OMEGA + ".txt";
-#ifdef WIN32
+#ifdef _WIN32
   const std::wstring upload_subdir_wstr = fineftp::StrConvert::Utf8ToWide(upload_subdir_utf8);
   const std::wstring filename_wstr      = fineftp::StrConvert::Utf8ToWide(filename_utf8);
-#endif // WIN32
+#endif // _WIN32
 
-#ifdef WIN32
+#ifdef _WIN32
   // For Windows we need to use the wstring / UTF-16 functions to be independent from the system configuration
   const auto upload_subdir   = upload_dir / upload_subdir_wstr;
   const auto local_file_path = upload_subdir / filename_wstr;
   const std::string local_file_path_utf8 = fineftp::StrConvert::WideToUtf8(local_file_path.wstring());
-#else // WIN32
+#else // _WIN32
   // For all other operating systems we assume that they use UTF-8 out of the box
   const auto upload_subdir   = upload_dir / upload_subdir_utf8;
   const auto local_file_path = upload_subdir / filename_utf8;
   const std::string local_file_path_utf8 = local_file_path.string();
-#endif // WIN32
+#endif // _WIN32
 
   // Create local root and ftp dir
   {
@@ -939,11 +939,11 @@ TEST(FineFTPTest, UTF8Paths)
 
   // Create a small hello world file in the upload dir
   {
-#ifdef WIN32
+#ifdef _WIN32
     std::ofstream ofs(local_file_path.wstring());
-#else // WIN32
+#else // _WIN32
     std::ofstream ofs(local_file_path.string());
-#endif // WIN32
+#endif // _WIN32
     ofs << "Hello World";
     ofs.close();
     
@@ -955,13 +955,13 @@ TEST(FineFTPTest, UTF8Paths)
   // Upload the upload dir to the server with curl. Make sure to let curl create subdirs automatically
   {
     const std::string curl_command_utf8 = "curl  -S -s -T \"" + local_file_path_utf8 + "\" \"ftp://localhost:2121/" + utf8_laughing_emoji + "/\" --ftp-create-dirs";
-#ifdef WIN32
+#ifdef _WIN32
     const auto curl_result = _wsystem(fineftp::StrConvert::Utf8ToWide(curl_command_utf8).c_str());
     const auto target_file_path_in_ftp_root = ftp_root_dir / fineftp::StrConvert::Utf8ToWide(utf8_laughing_emoji) / filename_wstr;
 #else
     const auto curl_result = std::system(curl_command_utf8.c_str());
     const auto target_file_path_in_ftp_root = ftp_root_dir / utf8_laughing_emoji / filename_utf8;
-#endif // WIN32
+#endif // _WIN32
 
     ASSERT_EQ(curl_result, 0);
 
@@ -973,13 +973,13 @@ TEST(FineFTPTest, UTF8Paths)
   // Download the file again to the download dir.
   {
     const std::string curl_command_download_utf8 = "curl  -S -s -o \"" + (download_dir / filename_utf8).string() + "\" \"ftp://localhost:2121/" + utf8_laughing_emoji + "/" + filename_utf8 + "\"";
-#ifdef WIN32
+#ifdef _WIN32
     const auto curl_result = _wsystem(fineftp::StrConvert::Utf8ToWide(curl_command_download_utf8).c_str());
     const auto target_file_path_in_download_dir = download_dir / filename_wstr;
 #else
     const auto curl_result = std::system(curl_command_download_utf8.c_str());
     const auto target_file_path_in_download_dir = download_dir / filename_utf8;
-#endif // WIN32
+#endif // _WIN32
 
     ASSERT_EQ(curl_result, 0);
     

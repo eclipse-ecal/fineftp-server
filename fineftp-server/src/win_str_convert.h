@@ -4,7 +4,7 @@ namespace fineftp
 {
   namespace StrConvert
   {
-#ifdef WIN32
+#ifdef _WIN32
     std::string WideToAnsi(const std::wstring& wstr);
 
     std::wstring AnsiToWide(const std::string& str);
@@ -16,6 +16,6 @@ namespace fineftp
     std::string AnsiToUtf8(const std::string& str);
 
     std::string Utf8ToAnsi(const std::string& str);
-#endif // WIN32
+#endif // _WIN32
   }
 }
