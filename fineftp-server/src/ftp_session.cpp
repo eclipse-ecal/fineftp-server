@@ -273,6 +273,7 @@ namespace fineftp
       { "FEAT", std::bind(&FtpSession::handleFtpCommandFEAT, this, std::placeholders::_1) },
       { "OPTS", std::bind(&FtpSession::handleFtpCommandOPTS, this, std::placeholders::_1) },
       { "SIZE", std::bind(&FtpSession::handleFtpCommandSIZE, this, std::placeholders::_1) },
+      { "MDTM", std::bind(&FtpSession::handleFtpCommandMDTM, this, std::placeholders::_1) }
     };
 
     auto command_it = command_map.find(ftp_command);
@@ -1197,6 +1198,38 @@ namespace fineftp
     }
 
     sendFtpMessage(FtpReplyCode::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER, "Unrecognized parameter");
+  }
+
+  void FtpSession::handleFtpCommandMDTM(const std::string& param) {
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+      return;
+    }
+
+    if (static_cast<int>(logged_in_user_->permissions_ & (Permission::FileRead | Permission::DirList)) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
+
+    if (param.empty())
+    {
+      sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_PARAMETERS, "No file path given");
+      return;
+    }
+
+    const std::string local_path = toLocalPath(param);
+
+    auto file_status = Filesystem::FileStatus(local_path);
+
+    if (!file_status.isOk() || file_status.type() != Filesystem::FileType::RegularFile)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, local_path + " is not retrievable");
+      return;
+    }
+
+    sendFtpMessage(FtpReplyCode::FILE_STATUS, file_status.generalizedTimeString());
   }
 
   ////////////////////////////////////////////////////////

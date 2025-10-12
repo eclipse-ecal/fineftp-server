@@ -248,6 +248,39 @@ namespace Filesystem
     return month_names.at(file_timeinfo.tm_mon) + date.str();
   }
 
+  std::string FileStatus::generalizedTimeString() const
+  {
+    if (!is_ok_)
+      return "19700101000000";
+
+    // The generalized time format is: YYYYMMDDHHMMSS
+    // Example: 19970716210700
+
+    std::tm file_timeinfo{};
+
+#if defined(__unix__)
+    gmtime_r   (&file_status_.st_mtime, &file_timeinfo);
+#elif defined(_MSC_VER)
+    gmtime_s   (&file_timeinfo, &file_status_.st_mtime);
+#else
+    static std::mutex mtx;
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      file_timeinfo = *std::gmtime  (&file_status_.st_mtime);
+    }
+#endif
+    std::stringstream date;
+    static constexpr auto tm_year_base_year = 1900;
+    date << std::setw( 4 ) << ( file_timeinfo.tm_year + tm_year_base_year )
+         << std::setw( 2 ) << std::setfill( '0' ) << ( file_timeinfo.tm_mon + 1 )
+         << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_mday
+         << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_hour
+         << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_min
+         << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_sec;
+
+    return date.str();
+  }
+  
   bool FileStatus::canOpenDir() const
   {
     if (!is_ok_)

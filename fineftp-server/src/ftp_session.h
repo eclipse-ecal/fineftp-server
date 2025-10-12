@@ -109,6 +109,8 @@ namespace fineftp
 
     void handleFtpCommandOPTS(const std::string& param);
 
+    void handleFtpCommandMDTM(const std::string& param);
+
   ////////////////////////////////////////////////////////
   // FTP data-socket send
   ////////////////////////////////////////////////////////
