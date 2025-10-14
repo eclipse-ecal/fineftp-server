@@ -1180,6 +1180,7 @@ namespace fineftp
     ss << "211- Feature List:\r\n";
     ss << " UTF8\r\n";
     ss << " SIZE\r\n";
+    ss << " MDTM\r\n";
     ss << " LANG EN\r\n";
     ss << "211 END\r\n";
 
