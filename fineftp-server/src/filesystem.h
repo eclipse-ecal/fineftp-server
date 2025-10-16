@@ -55,6 +55,8 @@ namespace fineftp
 
       std::string timeString() const;
 
+      std::string generalizedTimeString() const;
+
       bool canOpenDir() const;
 
 
