@@ -263,6 +263,7 @@ namespace Filesystem
     // The generalized time format is: YYYYMMDDHHMMSS
     // Example: 19970716210700
 
+    static constexpr auto tm_year_base_year = 1900;
     std::tm file_timeinfo{};
     int time_ms = 0;
 
@@ -276,9 +277,47 @@ namespace Filesystem
     }
     auto time_sec = file_status_.st_mtime + time_carryover_seconds;
     gmtime_r   (&time_sec, &file_timeinfo);
-#elif defined(_MSC_VER)
-    // On Windows, the st_mtime field has a resolution of 1 second only, so we cannot return milliseconds here
-    gmtime_s   (&file_timeinfo, &file_status_.st_mtime);
+
+#elif defined (_WIN32)
+    // Query write time from WIN32 API, as the POSIX API does not reveal milliseconds on Windows
+
+    const std::wstring w_path = StrConvert::Utf8ToWide(path_);
+    HANDLE file_handle = CreateFileW(w_path.c_str()
+                              , GENERIC_READ
+                              , FILE_SHARE_READ
+                              , NULL
+                              , OPEN_EXISTING
+                              , 0
+                              , NULL);
+
+    if(file_handle == INVALID_HANDLE_VALUE)
+    {
+        return "19700101000000";
+    }
+
+    FILETIME filetime_create{}; // Unused
+    FILETIME filetime_access{}; // Unused
+    FILETIME filetime_write{};
+
+    // Retrieve the file times for the file.
+    if (!GetFileTime(file_handle, &filetime_create, &filetime_access, &filetime_write))
+        return "19700101000000";
+
+    CloseHandle(file_handle); 
+
+    // Convert the last-write-time from a filetime to systemtime (in UTC).
+    SYSTEMTIME file_write_time_utc{};
+    FileTimeToSystemTime(&filetime_write, &file_write_time_utc);
+
+    // Fill the time info struct just as the POSIX api would have, but also set the milliseconds
+    file_timeinfo.tm_year = file_write_time_utc.wYear - tm_year_base_year;
+    file_timeinfo.tm_mon  = file_write_time_utc.wMonth - 1;
+    file_timeinfo.tm_mday = file_write_time_utc.wDay;
+    file_timeinfo.tm_hour = file_write_time_utc.wHour;
+    file_timeinfo.tm_min  = file_write_time_utc.wMinute;
+    file_timeinfo.tm_sec  = file_write_time_utc.wSecond;
+    time_ms               = file_write_time_utc.wMilliseconds;
+    
 #else
     static std::mutex mtx;
     {
@@ -286,8 +325,8 @@ namespace Filesystem
       file_timeinfo = *std::gmtime  (&file_status_.st_mtime);
     }
 #endif
+
     std::stringstream date;
-    static constexpr auto tm_year_base_year = 1900;
     date << std::setw( 4 ) << ( file_timeinfo.tm_year + tm_year_base_year )
          << std::setw( 2 ) << std::setfill( '0' ) << ( file_timeinfo.tm_mon + 1 )
          << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_mday
