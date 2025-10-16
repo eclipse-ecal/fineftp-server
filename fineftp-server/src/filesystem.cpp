@@ -6,6 +6,7 @@
 #include <list>
 #include <mutex> // IWYU pragma: keep
 #include <sstream>
+#include <cmath>
 
 #include <chrono>
 #include <ctime>
@@ -28,6 +29,12 @@
   #include <win_str_convert.h>
 
 #else // _WIN32
+
+#if ((defined(__APPLE__) && defined(__MACH__)) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
+  #define ST_MTIME_NSEC st_mtimespec.tv_nsec
+#elif defined(__unix__)
+  #define ST_MTIME_NSEC st_mtim.tv_nsec
+#endif
 
 #include <cerrno>
 #include <cstring>
@@ -257,10 +264,20 @@ namespace Filesystem
     // Example: 19970716210700
 
     std::tm file_timeinfo{};
+    int time_ms = 0;
 
 #if defined(__unix__)
-    gmtime_r   (&file_status_.st_mtime, &file_timeinfo);
+    int time_carryover_seconds = 0;
+    if(file_status_.ST_MTIME_NSEC != 0)
+    {
+      time_ms = static_cast<time_t>(std::round(static_cast<double>(file_status_.ST_MTIME_NSEC) / 1000000));
+      time_carryover_seconds = time_ms / 1000;
+      time_ms = time_ms % 1000;
+    }
+    auto time_sec = file_status_.st_mtime + time_carryover_seconds;
+    gmtime_r   (&time_sec, &file_timeinfo);
 #elif defined(_MSC_VER)
+    // On Windows, the st_mtime field has a resolution of 1 second only, so we cannot return milliseconds here
     gmtime_s   (&file_timeinfo, &file_status_.st_mtime);
 #else
     static std::mutex mtx;
@@ -277,6 +294,12 @@ namespace Filesystem
          << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_hour
          << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_min
          << std::setw( 2 ) << std::setfill( '0' ) << file_timeinfo.tm_sec;
+
+    // Append milliseconds only if available
+    if (time_ms > 0)
+    {
+      date << "." << std::setw( 3 ) << std::setfill( '0' ) << time_ms;
+    }
 
     return date.str();
   }
