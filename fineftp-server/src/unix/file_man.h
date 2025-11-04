@@ -101,6 +101,7 @@ public:
     return file_stream_.good();
   }
 
+private:
   std::fstream      file_stream_;
   std::vector<char> stream_buffer_;
 };
