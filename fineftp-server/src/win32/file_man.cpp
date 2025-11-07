@@ -141,8 +141,8 @@ std::shared_ptr<ReadableFile> ReadableFile::get(const Str& file_path)
   files[readable_file_ptr->path_] = readable_file_ptr;
   return readable_file_ptr;
 }
-  
-WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mode)
+
+WriteableFile::WriteableFile(const std::string& filename, std::ios::openmode mode): filename_(filename)
 {
   // std::ios::binary is ignored in mode because, on Windows, even ASCII files have to be stored as
   // binary files as they come in with the right line endings.
@@ -193,7 +193,12 @@ void WriteableFile::close()
     handle_ = INVALID_HANDLE_VALUE;
   }
 }
-  
+
+Str WriteableFile::filename() const
+{
+  return filename_;
+}
+
 void WriteableFile::write(const char* data, std::size_t sz)
 {
   DWORD bytes_written{}; // Unused, but required according to https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefile

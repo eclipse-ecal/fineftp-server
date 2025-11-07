@@ -66,7 +66,8 @@ public:
   /// @param filename  The (UTF-8 encoded) name of the file.
   /// @param mode      The open mode to use for the file (std::ios::out is implied).
   WriteableFile(const std::string& filename, std::ios::openmode mode)
-    : file_stream_(filename, std::ios::out | mode)
+    : filename_(filename)
+    , file_stream_(filename, std::ios::out | mode)
     , stream_buffer_(1024 * 1024)
   {
     file_stream_.rdbuf()->pubsetbuf(stream_buffer_.data(), static_cast<std::streamsize>(stream_buffer_.size()));
@@ -101,7 +102,14 @@ public:
     return file_stream_.good();
   }
 
+  std::string filename() const
+  {
+    return filename_;
+  }
+
 private:
+
+  std::string       filename_;
   std::fstream      file_stream_;
   std::vector<char> stream_buffer_;
 };

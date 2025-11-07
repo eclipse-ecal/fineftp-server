@@ -16,7 +16,7 @@
 namespace fineftp
 {
 
-  FtpServerImpl::FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
+  FtpServerImpl::FtpServerImpl(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error, FtpCommandCallback ftp_command_callback)
     : ftp_users_            (output, error)
     , port_                 (port)
     , address_              (address)
@@ -24,6 +24,7 @@ namespace fineftp
     , open_connection_count_(0)
     , output_               (output)
     , error_                (error)
+    , ftp_command_callback_ (std::move(ftp_command_callback))
   {}
 
   FtpServerImpl::~FtpServerImpl()
@@ -110,7 +111,7 @@ namespace fineftp
     {
       thread_pool_.emplace_back([this] {io_context_.run(); });
     }
-    
+    is_running_ = true;
     return true;
   }
 
@@ -122,6 +123,7 @@ namespace fineftp
       thread.join();
     }
     thread_pool_.clear();
+    is_running_ = false;
   }
 
   void FtpServerImpl::acceptFtpSession(const std::shared_ptr<FtpSession>& ftp_session, asio::error_code const& error)
@@ -138,6 +140,7 @@ namespace fineftp
     output_ << "FTP Client connected: " << ftp_session->getSocket().remote_endpoint().address().to_string() << ":" << ftp_session->getSocket().remote_endpoint().port() << std::endl;
 #endif
 
+    ftp_session->setFtpCommandCallback(ftp_command_callback_);
     ftp_session->start();
 
     auto new_session = std::make_shared<FtpSession>(io_context_, ftp_users_, [this]() { open_connection_count_--; }, output_, error_);
@@ -163,5 +166,15 @@ namespace fineftp
   std::string FtpServerImpl::getAddress()
   {
     return acceptor_.local_endpoint().address().to_string();
+  }
+
+  void FtpServerImpl::setFtpCommandCallback(FtpCommandCallback callback)
+  {
+    if( is_running_ )
+    {
+      error_ << "Cannot set FTP command callback while server is running." << std::endl;
+      return;
+    }
+    ftp_command_callback_ = std::move(callback);
   }
 }
