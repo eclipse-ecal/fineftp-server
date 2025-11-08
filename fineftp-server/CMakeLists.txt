@@ -20,6 +20,7 @@ include(GenerateExportHeader)
 set (includes
     include/fineftp/server.h
     include/fineftp/permissions.h
+    include/fineftp/command_type.h
 )
 
 # Private source files

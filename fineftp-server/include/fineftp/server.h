@@ -5,12 +5,14 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <functional>
 
 // IWYU pragma: begin_exports
 #include <fineftp/permissions.h>
 
 #include <fineftp/fineftp_version.h>
 #include <fineftp/fineftp_export.h>
+#include <fineftp/command_type.h>
 // IWYU pragma: end_exports
 
 namespace fineftp
@@ -18,6 +20,8 @@ namespace fineftp
 
   /** Private implementation */
   class FtpServerImpl;
+
+  enum class command_type;
 
   /**
    * @brief The fineftp::FtpServer is a simple FTP server library.
@@ -58,7 +62,7 @@ namespace fineftp
      * @param output: Stream for info log output. Defaults to std::cout if constructors without that options are used.
      * @param error: Stream for error log output. Defaults to std::cerr if constructors without that options are used.
      */
-    FINEFTP_EXPORT FtpServer(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
+    FINEFTP_EXPORT FtpServer(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error, FtpCommandCallback ftp_command_callback = {});
 
     /**
      * @brief Creates an FTP Server instance that will listen on the the given control port and accept connections from the given network interface.
@@ -76,7 +80,7 @@ namespace fineftp
      * @param port: The port to start the FTP server on. Defaults to 21.
      * @param host: The host to accept incoming connections from.
      */
-    FINEFTP_EXPORT FtpServer(const std::string& address, uint16_t port = 21);
+    FINEFTP_EXPORT explicit FtpServer(const std::string& address, uint16_t port = 21, FtpCommandCallback ftp_command_callback = {});
 
     /**
      * @brief Creates an FTP Server instance that will listen on the the given control port.
@@ -98,7 +102,7 @@ namespace fineftp
      * 
      * @param port: The port to start the FTP server on. Defaults to 21.
      */
-    FINEFTP_EXPORT explicit FtpServer(uint16_t port = 21);
+    FINEFTP_EXPORT explicit FtpServer(uint16_t port = 21, FtpCommandCallback ftp_command_callback = {});
 
     // Move
     FINEFTP_EXPORT FtpServer(FtpServer&&) noexcept;
@@ -186,6 +190,17 @@ namespace fineftp
      * @return The ip address the FTP server is listening for.
      */
     FINEFTP_EXPORT std::string getAddress() const;
+
+    /**
+     * @brief Register a callback invoked for FTP commands that perform filesystem operations.
+     *
+     * The callback is called synchronously during command handling and therefore must be
+     * lightweight and thread-safe. It receives the command_type and an associated string
+     * (typically the command argument, e.g. a path).
+     *
+     * @param callback The function to call for filesystem-affecting FTP commands.
+     */
+    FINEFTP_EXPORT void setFtpCommandCallback(FtpCommandCallback callback);
 
   private:
     std::unique_ptr<FtpServerImpl> ftp_server_;        /**< Implementation details */

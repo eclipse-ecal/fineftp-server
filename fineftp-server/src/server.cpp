@@ -13,16 +13,16 @@
 
 namespace fineftp
 {
-  FtpServer::FtpServer(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error)
-    : ftp_server_(std::make_unique<FtpServerImpl>(address, port, output, error))
+  FtpServer::FtpServer(const std::string& address, const uint16_t port, std::ostream& output, std::ostream& error, FtpCommandCallback ftp_command_callback)
+    : ftp_server_(std::make_unique<FtpServerImpl>(address, port, output, error, ftp_command_callback))
   {}
 
-  FtpServer::FtpServer(const std::string& address, const uint16_t port)
-    : FtpServer(address, port, std::cout, std::cerr)
+  FtpServer::FtpServer(const std::string& address, const uint16_t port, FtpCommandCallback ftp_command_callback)
+    : FtpServer(address, port, std::cout, std::cerr, ftp_command_callback)
   {}
 
-  FtpServer::FtpServer(const uint16_t port)
-    : FtpServer(std::string("0.0.0.0"), port, std::cout, std::cerr)
+  FtpServer::FtpServer(const uint16_t port, FtpCommandCallback ftp_command_callback)
+    : FtpServer(std::string("0.0.0.0"), port, std::cout, std::cerr, ftp_command_callback)
   {}
 
   // Move
@@ -65,5 +65,11 @@ namespace fineftp
   std::string FtpServer::getAddress() const
   {
     return ftp_server_->getAddress();
+  }
+
+  void FtpServer::setFtpCommandCallback(FtpCommandCallback callback)
+  {
+    // Forward to implementation
+    ftp_server_->setFtpCommandCallback(std::move(callback));
   }
 }

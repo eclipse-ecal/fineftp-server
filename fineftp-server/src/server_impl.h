@@ -20,7 +20,7 @@ namespace fineftp
   class FtpServerImpl
   {
   public:
-    FtpServerImpl(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error);
+    FtpServerImpl(const std::string& address, uint16_t port, std::ostream& output, std::ostream& error, FtpCommandCallback ftp_command_callback = {});
 
     // Copy (disabled)
     FtpServerImpl(const FtpServerImpl&)            = delete;
@@ -45,6 +45,8 @@ namespace fineftp
 
     std::string getAddress();
 
+    void setFtpCommandCallback(FtpCommandCallback callback);
+
   private:
     void acceptFtpSession(const std::shared_ptr<FtpSession>& ftp_session, asio::error_code const& error);
 
@@ -62,5 +64,8 @@ namespace fineftp
 
     std::ostream& output_;  /* Normal output log */
     std::ostream& error_;   /* Error output log */
+
+    bool is_running_ {false};
+    FtpCommandCallback ftp_command_callback_ {nullptr};
   };
 }

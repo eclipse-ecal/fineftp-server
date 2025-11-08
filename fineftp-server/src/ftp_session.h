@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "fineftp/command_type.h"
 #include "ftp_message.h"
 
 #include "filesystem.h"
@@ -33,7 +34,11 @@ namespace fineftp
   // Public API
   ////////////////////////////////////////////////////////
   public:
-    FtpSession(asio::io_context& io_context, const UserDatabase& user_database, const std::function<void()>& completion_handler, std::ostream& output, std::ostream& error);
+    FtpSession(asio::io_context& io_context,
+               const UserDatabase& user_database,
+               const std::function<void()>& completion_handler, 
+               std::ostream& output, std::ostream& error, 
+               FtpCommandCallback ftp_command_callback = {});
 
     // Copy (disabled, as we are inheriting from shared_from_this)
     FtpSession(const FtpSession&)            = delete;
@@ -48,6 +53,8 @@ namespace fineftp
     void start();
 
     asio::ip::tcp::socket& getSocket();
+
+    void setFtpCommandCallback(FtpCommandCallback ftp_command_callback);
 
   ////////////////////////////////////////////////////////
   // FTP command-socket
@@ -119,7 +126,8 @@ namespace fineftp
     void sendDirectoryListing   (const std::map<std::string, Filesystem::FileStatus>& directory_content);
     void sendNameList           (const std::map<std::string, Filesystem::FileStatus>& directory_content);
 
-    void sendFile               (const std::shared_ptr<ReadableFile>&          file);
+    void sendFile               (const std::shared_ptr<ReadableFile>& file,
+                                 const command_type command = command_type::FTP_CMD_NONE);
 
     void addDataToBufferAndSend (const std::shared_ptr<std::vector<char>>&     data
                                , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
@@ -130,10 +138,11 @@ namespace fineftp
   // FTP data-socket receive
   ////////////////////////////////////////////////////////
   private:
-    void receiveFile(const std::shared_ptr<WriteableFile>& file);
+    void receiveFile(const std::shared_ptr<WriteableFile>& file, const command_type command = command_type::FTP_CMD_NONE);
 
-    void receiveDataFromSocketAndWriteToFile(const std::shared_ptr<WriteableFile>&         file
-                                           , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
+    void receiveDataFromSocketAndWriteToFile(const std::shared_ptr<WriteableFile>&         file,
+                                             const std::shared_ptr<asio::ip::tcp::socket>& data_socket,
+                                             const command_type command = command_type::FTP_CMD_NONE);
 
     void writeDataToFile(const std::shared_ptr<std::vector<char>>& data
                        , const std::shared_ptr<WriteableFile>&     file
@@ -146,6 +155,7 @@ namespace fineftp
   // Helpers
   ////////////////////////////////////////////////////////
   private:
+    void safeInvokeCallback(const command_type cmd, const std::string& param);
     std::string toAbsoluteFtpPath(const std::string& rel_or_abs_ftp_path) const;
     std::string toLocalPath(const std::string& ftp_path) const;
     static std::string createQuotedFtpPath(const std::string& unquoted_ftp_path);
@@ -214,5 +224,6 @@ namespace fineftp
 
     std::ostream& output_;  /* Normal output log */
     std::ostream& error_;   /* Error output log */
+    FtpCommandCallback ftp_command_callback_ {};
   };
 }

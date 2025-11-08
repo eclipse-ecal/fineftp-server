@@ -87,9 +87,11 @@ public:
   void write(const char* data, std::size_t sz);
   void close();
   bool good() const;
+  std::string filename() const;
 
 private:
-  HANDLE handle_ = INVALID_HANDLE_VALUE;
+  std::string filename_  = {};
+  HANDLE handle_    = INVALID_HANDLE_VALUE;
 };
 
 
