@@ -1398,7 +1398,11 @@ namespace fineftp
                                                             data_socket->shutdown(asio::socket_base::shutdown_both, errc);
                                                             data_socket->close(errc);
                                                           }
-
+#if defined(_WIN32)
+                                                          auto file_path = StrConvert::WideToUtf8(file->path());
+#else
+                                                          auto file_path = file->path();
+#endif
                                                           // Ugly work-around:
                                                           // An FTP client implementation has been observed to close the data connection
                                                           // as soon as it receives the 226 status code - even though it hasn't received
@@ -1407,7 +1411,7 @@ namespace fineftp
                                                           // preprocessor definition. If the delay is 0, no delay is introduced at all.
                                                           #if (0 == DELAY_226_RESP_MS)
                                                             me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
-                                                            me->safeInvokeCallback(command_type::FTP_CMD_RETR, file->path());
+                                                            me->safeInvokeCallback(command_type::FTP_CMD_RETR, file_path);
                                                           #else
                                                             me->timer_.expires_after(std::chrono::milliseconds{DELAY_226_RESP_MS});
                                                             me->timer_.async_wait(me->data_socket_strand_.wrap([me](const asio::error_code& ec)
@@ -1415,7 +1419,7 @@ namespace fineftp
                                                                                     if (ec != asio::error::operation_aborted)
                                                                                     {
                                                                                       me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
-                                                                                      me->safeInvokeCallback(command_type::FTP_CMD_RETR, file->path());
+                                                                                      me->safeInvokeCallback(command_type::FTP_CMD_RETR, file_path);
                                                                                     }
                                                                                   }));
                                                           #endif
