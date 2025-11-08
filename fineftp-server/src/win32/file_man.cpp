@@ -194,7 +194,7 @@ void WriteableFile::close()
   }
 }
 
-Str WriteableFile::filename() const
+std::string WriteableFile::filename() const
 {
   return filename_;
 }
