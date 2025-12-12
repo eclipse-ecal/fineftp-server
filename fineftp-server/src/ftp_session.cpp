@@ -664,7 +664,71 @@ namespace fineftp
 
   void FtpSession::handleFtpCommandSTOU(const std::string& /*param*/)
   {
-    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+      return;
+    }
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileWrite) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
+    if (!data_acceptor_.is_open())
+    {
+      sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+      return;
+    }
+
+    const auto now_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::tm now_timeinfo{};
+#if defined(__unix__) || defined(__APPLE__)
+    gmtime_r   (&now_time_t, &now_timeinfo);
+#elif defined(_MSC_VER)
+    gmtime_s   (&now_timeinfo, &now_time_t);
+#else
+    static std::mutex mtx;
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      if (auto tmp = std::gmtime(&now_time_t))
+      {
+        now_timeinfo = *tmp;
+      }
+    }
+#endif
+    std::ostringstream unique_file_name;
+    srand(static_cast<unsigned int>(time(nullptr)));
+    auto random_number = rand() % 10000;
+
+    // Form unique file name
+    // The format is: YYYYMMDDHHMMSS_RRRR_FILE
+    // Example: 20251207153045_0423_FILE
+    unique_file_name << std::put_time(&now_timeinfo, "%Y%m%d%H%M%S");
+    unique_file_name << "_" << std::setw(4) << std::setfill('0') << random_number << "_FILE";
+    
+    auto absolute_file_path = toLocalPath(unique_file_name.str());
+    if (absolute_file_path.empty() || Filesystem::FileStatus(absolute_file_path).isOk())
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Failed to generate unique filename");
+      return;
+    }
+
+    const std::ios::openmode open_mode = (data_type_binary_ ? std::ios::binary : std::ios::openmode{});
+    const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(absolute_file_path, open_mode);
+
+    if (!file->good())
+    {
+#ifdef _WIN32
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer: " + GetLastErrorStr());
+#else
+      sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Error opening file for transfer");
+#endif // _WIN32
+      return;
+    }
+
+    sendFtpMessage(FtpReplyCode::DATA_CONNECTION_OPEN_TRANSFER_STARTING, "FILE: " + unique_file_name.str());
+    receiveFile(file);
+    return;
   }
 
   void FtpSession::handleFtpCommandAPPE(const std::string& param)
