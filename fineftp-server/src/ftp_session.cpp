@@ -680,8 +680,6 @@ namespace fineftp
       return;
     }
 
-    std::string absolute_file_path;
-
     const auto now_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::tm now_timeinfo{};
 #if defined(__unix__) || defined(__APPLE__)
@@ -708,7 +706,7 @@ namespace fineftp
     unique_file_name << std::put_time(&now_timeinfo, "%Y%m%d%H%M%S");
     unique_file_name << "_" << std::setw(4) << std::setfill('0') << random_number << "_FILE";
     
-    absolute_file_path = toLocalPath(ftp_working_directory_ + "/" + unique_file_name.str());
+    auto absolute_file_path = toLocalPath(unique_file_name.str());
     if (absolute_file_path.empty() || Filesystem::FileStatus(absolute_file_path).isOk())
     {
       sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Failed to generate unique filename");
@@ -728,10 +726,9 @@ namespace fineftp
       return;
     }
 
-    sendFtpMessage(FtpReplyCode::DATA_CONNECTION_OPEN_TRANSFER_STARTING, "FILE: " + absolute_file_path);
+    sendFtpMessage(FtpReplyCode::DATA_CONNECTION_OPEN_TRANSFER_STARTING, "FILE: " + unique_file_name.str());
     receiveFile(file);
     return;
-    
   }
 
   void FtpSession::handleFtpCommandAPPE(const std::string& param)
