@@ -19,6 +19,7 @@
 #include <string>
 #include <sys/types.h>
 #include <vector>
+#include <random>
 
 #include <file_man.h>
 
@@ -696,13 +697,15 @@ namespace fineftp
       }
     }
 #endif
-    std::ostringstream unique_file_name;
-    srand(static_cast<unsigned int>(time(nullptr)));
-    auto random_number = rand() % 10000;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 9999);
+    auto random_number = dist(gen);
 
     // Form unique file name
     // The format is: YYYYMMDDHHMMSS_RRRR_FILE
     // Example: 20251207153045_0423_FILE
+    std::ostringstream unique_file_name;
     unique_file_name << std::put_time(&now_timeinfo, "%Y%m%d%H%M%S");
     unique_file_name << "_" << std::setw(4) << std::setfill('0') << random_number << "_FILE";
     
