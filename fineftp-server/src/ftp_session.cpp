@@ -321,7 +321,7 @@ namespace fineftp
 
   void FtpSession::handleFtpCommandPASS(const std::string& param)
   {
-    if (last_command_ != "USER")
+    if (last_command_ != "USER" || username_for_login_.empty())
     {
       sendFtpMessage(FtpReplyCode::COMMANDS_BAD_SEQUENCE, "Please specify username first");
       return;
