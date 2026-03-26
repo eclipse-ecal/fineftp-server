@@ -98,34 +98,68 @@ void uploadWithStou(const std::string& filePath,
     + scriptPath + "\"";
 
 #else
-  // ----- Linux / macOS: use the standard ftp client -----
-  // The `sunique` command tells the ftp client to use STOU instead of
-  // STOR when executing `put`, so the server picks a unique filename.
-  // We write the commands to a temp script file and pipe it via `-n`
-  // (no auto-login) to avoid interactive prompts.
+  // ----- Linux / macOS -----
+  // macOS removed the built-in `ftp` client, so we check at runtime:
+  //   1. `ftp`    — available on most Linux distros; uses `sunique` + `put`
+  //   2. `python3` — fallback using ftplib.storbinary('STOU ...'), works everywhere
   std::string portStr = std::to_string(port);
+  std::string scriptPath = "/tmp/ftp_stou_upload_script";
+  std::string cmd;
 
-  std::string ftpScript;
-  ftpScript += "open " + host + " " + portStr + "\n";
-  ftpScript += "user anonymous anonymous@\n";
-  ftpScript += "binary\n";
-  ftpScript += "sunique\n";
-  ftpScript += "put " + filePath + "\n";
-  ftpScript += "bye\n";
+  // Check if the `ftp` command exists
+  if (system("command -v ftp > /dev/null 2>&1") == 0) {
+    // --- Use the standard ftp client with sunique ---
+    std::string ftpScript;
+    ftpScript += "open " + host + " " + portStr + "\n";
+    ftpScript += "user anonymous anonymous@\n";
+    ftpScript += "binary\n";
+    ftpScript += "sunique\n";
+    ftpScript += "put " + filePath + "\n";
+    ftpScript += "bye\n";
 
-  // Write script to a temp file
-  std::string scriptPath = "/tmp/ftp_stou_upload.ftp";
-  {
-    std::ofstream scriptFile(scriptPath);
-    if (!scriptFile.is_open()) {
-      std::cerr << "Failed to create temp script: " << scriptPath << "\n";
-      return;
+    scriptPath += ".ftp";
+    {
+      std::ofstream f(scriptPath);
+      if (!f.is_open()) {
+        std::cerr << "Failed to create temp script: " << scriptPath << "\n";
+        return;
+      }
+      f << ftpScript;
     }
-    scriptFile << ftpScript;
-  }
+    // -n = no auto-login (we login manually via the "user" command)
+    cmd = "ftp -n < \"" + scriptPath + "\"";
 
-  // -n = no auto-login (we login manually via the "user" command)
-  std::string cmd = "ftp -n < \"" + scriptPath + "\""; 
+  }
+  else if (system("command -v python3 > /dev/null 2>&1") == 0) {
+    // --- Fallback: Python 3 ftplib (available on macOS) ---
+    std::string pyScript;
+    pyScript += "import sys\n";
+    pyScript += "from ftplib import FTP\n";
+    pyScript += "ftp = FTP()\n";
+    pyScript += "ftp.connect('" + host + "', " + portStr + ")\n";
+    pyScript += "ftp.login('anonymous', 'anonymous@')\n";
+    pyScript += "ftp.set_pasv(True)\n";
+    pyScript += "with open('" + filePath + "', 'rb') as f:\n";
+    pyScript += "    result = ftp.storbinary('STOU " + filePath + "', f)\n";
+    pyScript += "print(result)\n";
+    pyScript += "ftp.quit()\n";
+
+    scriptPath += ".py";
+    {
+      std::ofstream f(scriptPath);
+      if (!f.is_open()) {
+        std::cerr << "Failed to create temp script: " << scriptPath << "\n";
+        return;
+      }
+      f << pyScript;
+    }
+    cmd = "python3 \"" + scriptPath + "\"";
+
+  }
+  else {
+    std::cerr << "Error: neither 'ftp' nor 'python3' found on this system.\n";
+    return;
+  }
 #endif
 
   std::cout << "Running command:\n" << cmd << "\n\n";
