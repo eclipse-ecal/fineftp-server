@@ -1,22 +1,26 @@
-#include <cstdlib>
-#include <iostream>
-#include <string>
 #include <array>
-#include <stdexcept>
+#include <cstdlib>
+#include <exception>
 #include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <stdio.h>
+#include <string>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
 // Run a shell command and return its stdout + exit code.
-struct CmdResult {
+struct CmdResult
+{
   std::string output;
   int exitCode;
 };
 
-CmdResult runCommand(const std::string& cmd) {
-  std::array<char, 256> buffer;
+inline CmdResult runCommand(const std::string& cmd)
+{
+  std::array<char, 256> buffer{};
   std::string result;
 
 #ifdef _WIN32
@@ -25,31 +29,34 @@ CmdResult runCommand(const std::string& cmd) {
   FILE* pipe = popen(cmd.c_str(), "r");
 #endif
 
-  if (!pipe) {
+  if (pipe == nullptr)
+  {
     throw std::runtime_error("Failed to open pipe for command: " + cmd);
   }
 
-  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
+  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr)
+  {
     result += buffer.data();
   }
 
 #ifdef _WIN32
-  int status = _pclose(pipe);
+  const int status = _pclose(pipe);
 #else
-  int status = pclose(pipe);
+  const int status = pclose(pipe);
 #endif
 
   return { result, status };
 }
 
-void uploadWithStou(const std::string& filePath,
-  const std::string& host,
-  int port) {
+inline void uploadWithStou(const std::string& filePath
+                          , const std::string& host
+                          , int port)
+{
 #ifdef _WIN32
   // ----- Windows: use PowerShell with FtpWebRequest -----
   // Write the script to a temp .ps1 file and run it with -File.
   // Passing multi-line scripts via -Command "..." through cmd.exe
-  // is unreliable — newlines and special chars get silently mangled.
+  // is unreliable ï¿½ newlines and special chars get silently mangled.
   std::string portStr = std::to_string(port);
 
   std::string ps;
@@ -78,16 +85,19 @@ void uploadWithStou(const std::string& filePath,
   // Write script to a temp file
   std::string scriptPath;
   char tmpPath[MAX_PATH];
-  if (GetTempPathA(MAX_PATH, tmpPath)) {
+  if (GetTempPathA(MAX_PATH, tmpPath))
+  {
     scriptPath = std::string(tmpPath) + "ftp_stou_upload.ps1";
   }
-  else {
+  else
+  {
     scriptPath = "ftp_stou_upload.ps1";
   }
 
   {
     std::ofstream scriptFile(scriptPath);
-    if (!scriptFile.is_open()) {
+    if (!scriptFile.is_open())
+    {
       std::cerr << "Failed to create temp script: " << scriptPath << "\n";
       return;
     }
@@ -100,14 +110,15 @@ void uploadWithStou(const std::string& filePath,
 #else
   // ----- Linux / macOS -----
   // macOS removed the built-in `ftp` client, so we check at runtime:
-  //   1. `ftp`    — available on most Linux distros; uses `sunique` + `put`
-  //   2. `python3` — fallback using ftplib.storbinary('STOU ...'), works everywhere
-  std::string portStr = std::to_string(port);
+  //   1. `ftp`    ï¿½ available on most Linux distros; uses `sunique` + `put`
+  //   2. `python3` ï¿½ fallback using ftplib.storbinary('STOU ...'), works everywhere
+  const std::string portStr = std::to_string(port);
   std::string scriptPath = "/tmp/ftp_stou_upload_script";
   std::string cmd;
 
   // Check if the `ftp` command exists
-  if (system("command -v ftp > /dev/null 2>&1") == 0) {
+  if (system("command -v ftp > /dev/null 2>&1") == 0)
+  {
     // --- Use the standard ftp client with sunique ---
     std::string ftpScript;
     ftpScript += "open " + host + " " + portStr + "\n";
@@ -120,7 +131,8 @@ void uploadWithStou(const std::string& filePath,
     scriptPath += ".ftp";
     {
       std::ofstream f(scriptPath);
-      if (!f.is_open()) {
+      if (!f.is_open())
+      {
         std::cerr << "Failed to create temp script: " << scriptPath << "\n";
         return;
       }
@@ -130,7 +142,8 @@ void uploadWithStou(const std::string& filePath,
     cmd = "ftp -n < \"" + scriptPath + "\"";
 
   }
-  else if (system("command -v python3 > /dev/null 2>&1") == 0) {
+  else if (system("command -v python3 > /dev/null 2>&1") == 0)
+  {
     // --- Fallback: Python 3 ftplib (available on macOS) ---
     std::string pyScript;
     pyScript += "import sys\n";
@@ -147,7 +160,8 @@ void uploadWithStou(const std::string& filePath,
     scriptPath += ".py";
     {
       std::ofstream f(scriptPath);
-      if (!f.is_open()) {
+      if (!f.is_open())
+      {
         std::cerr << "Failed to create temp script: " << scriptPath << "\n";
         return;
       }
@@ -156,7 +170,8 @@ void uploadWithStou(const std::string& filePath,
     cmd = "python3 \"" + scriptPath + "\"";
 
   }
-  else {
+  else
+  {
     std::cerr << "Error: neither 'ftp' nor 'python3' found on this system.\n";
     return;
   }
@@ -164,17 +179,21 @@ void uploadWithStou(const std::string& filePath,
 
   std::cout << "Running command:\n" << cmd << "\n\n";
 
-  try {
-    CmdResult res = runCommand(cmd);
+  try
+  {
+    const CmdResult res = runCommand(cmd);
     std::cout << "Output:\n" << res.output << "\n";
-    if (res.exitCode != 0) {
+    if (res.exitCode != 0)
+    {
       std::cerr << "Command exited with code " << res.exitCode << "\n";
     }
-    else {
+    else
+    {
       std::cout << "STOU Upload completed successfully.\n";
     }
   }
-  catch (const std::exception& ex) {
+  catch (const std::exception& ex)
+  {
     std::cerr << "Error: " << ex.what() << "\n";
   }
 }

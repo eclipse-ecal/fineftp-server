@@ -2,10 +2,12 @@
 
 #include <asio.hpp> // IWYU pragma: keep
 
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <random>
 #include <string>
 #include <vector>
