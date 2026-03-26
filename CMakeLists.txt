@@ -18,7 +18,7 @@ option(FINEFTP_SERVER_BUILD_SAMPLES
        "Build project samples."
        ON)
 option(FINEFTP_SERVER_BUILD_TESTS
-       "Build the the fineftp-server tests. Requires C++17. For executing the tests, curl must be available from the PATH."
+       "Build the the fineftp-server tests. Requires C++17. For executing the tests, curl must be available from the PATH. For Windows, additionally Powershell and for Linux / macOS the ftp command  or python3 with ftplib is used to test the STOU command, that is unsupported by curl."
        OFF)
 
 option(FINEFTP_SERVER_USE_BUILTIN_ASIO

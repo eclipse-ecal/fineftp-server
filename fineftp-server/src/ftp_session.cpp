@@ -13,8 +13,10 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <memory>
+#include <random>
 #include <sstream>
 #include <string>
 #include <sys/types.h>
@@ -56,8 +58,10 @@ namespace fineftp
     , data_acceptor_        (io_context)
     , data_socket_strand_   (io_context)
     , timer_                (io_context)
-    , output_(output)
-    , error_(error)
+    , output_               (output)
+    , error_                (error)
+    , random_generator_     (std::random_device{}())
+    , random_distribution_  (std::numeric_limits<random_distribution_inttype>::min(), std::numeric_limits<random_distribution_inttype>::max())
   {
   }
 
@@ -664,7 +668,69 @@ namespace fineftp
 
   void FtpSession::handleFtpCommandSTOU(const std::string& /*param*/)
   {
-    sendFtpMessage(FtpReplyCode::SYNTAX_ERROR_UNRECOGNIZED_COMMAND, "Command not implemented");
+    if (!logged_in_user_)
+    {
+      sendFtpMessage(FtpReplyCode::NOT_LOGGED_IN, "Not logged in");
+      return;
+    }
+
+    if (static_cast<int>(logged_in_user_->permissions_ & Permission::FileWrite) == 0)
+    {
+      sendFtpMessage(FtpReplyCode::ACTION_NOT_TAKEN, "Permission denied");
+      return;
+    }
+
+    if (!data_acceptor_.is_open())
+    {
+      sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Error opening data connection");
+      return;
+    }
+
+    const std::ios::openmode open_mode = std::ios::out | (data_type_binary_ ? std::ios::binary : std::ios::openmode{});
+
+    // Try to create a unique file multiple times (usually, this should only run 1 time)
+    static constexpr int max_attempts = 10;
+    for (int attempt = 0; attempt < max_attempts; ++attempt)
+    {
+      // Generate a simple unique name: "FILE_XXXXXXXX"
+      std::ostringstream name_buf;
+      name_buf << "FILE_"
+              << std::hex
+              << std::setw(sizeof(random_distribution_inttype) * 2)
+              << std::setfill('0')
+              << random_distribution_(random_generator_);
+      const std::string unique_file_name = name_buf.str();
+
+      const auto absolute_file_path = toLocalPath(unique_file_name);
+
+      // Check if the file already exists. This is unlikely, but possible!
+      if(Filesystem::FileStatus(absolute_file_path).isOk())
+      {
+        continue;
+      }
+
+      // Create a file with that filename
+      const std::shared_ptr<WriteableFile> file = std::make_shared<WriteableFile>(absolute_file_path, open_mode);
+
+      if (!file->good())
+      {
+#ifdef _WIN32
+        sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR,
+          "Error opening file for transfer: " + GetLastErrorStr());
+#else
+        sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR,
+          "Error opening file for transfer");
+#endif
+        return;
+      }
+
+      sendFtpMessage(FtpReplyCode::DATA_CONNECTION_OPEN_TRANSFER_STARTING, "FILE: " + unique_file_name);
+      receiveFile(file);
+      return;
+    }
+
+    // If we end up here, we failed to generate a unique filename way too often.
+    sendFtpMessage(FtpReplyCode::ACTION_ABORTED_LOCAL_ERROR, "Failed to generate unique filename after multiple attempts");
   }
 
   void FtpSession::handleFtpCommandAPPE(const std::string& param)
