@@ -56,7 +56,7 @@ inline void uploadWithStou(const std::string& filePath
   // ----- Windows: use PowerShell with FtpWebRequest -----
   // Write the script to a temp .ps1 file and run it with -File.
   // Passing multi-line scripts via -Command "..." through cmd.exe
-  // is unreliable � newlines and special chars get silently mangled.
+  // is unreliable - newlines and special chars get silently mangled.
   std::string portStr = std::to_string(port);
 
   std::string ps;
@@ -110,8 +110,8 @@ inline void uploadWithStou(const std::string& filePath
 #else
   // ----- Linux / macOS -----
   // macOS removed the built-in `ftp` client, so we check at runtime:
-  //   1. `ftp`    � available on most Linux distros; uses `sunique` + `put`
-  //   2. `python3` � fallback using ftplib.storbinary('STOU ...'), works everywhere
+  //   1. `ftp`     - available on most Linux distros; uses `sunique` + `put`
+  //   2. `python3` - fallback using ftplib.storbinary('STOU ...'), works everywhere
   const std::string portStr = std::to_string(port);
   std::string scriptPath = "/tmp/ftp_stou_upload_script";
   std::string cmd;
