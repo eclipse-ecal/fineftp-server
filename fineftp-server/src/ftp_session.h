@@ -6,6 +6,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -214,5 +215,10 @@ namespace fineftp
 
     std::ostream& output_;  /* Normal output log */
     std::ostream& error_;   /* Error output log */
+
+    // Random generator for STOU command
+    using random_distribution_inttype = uint32_t;
+    std::mt19937                                               random_generator_;
+    std::uniform_int_distribution<random_distribution_inttype> random_distribution_;
   };
 }

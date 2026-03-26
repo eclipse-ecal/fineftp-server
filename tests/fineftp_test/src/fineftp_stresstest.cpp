@@ -16,6 +16,8 @@
 #include <thread>
 #include <vector>
 
+#include "stou_helper.h"
+
 #ifdef _WIN32
 #include <win_str_convert.h>
 #endif // _WIN32
@@ -1062,6 +1064,80 @@ TEST(FineFTPTest, AppendToFile) {
                  (std::istreambuf_iterator<char>()));
 
     ASSERT_EQ(content, "HELLO WORLDHello World");
+  }
+
+  // Stop the server
+  server.stop();
+}
+#endif
+
+#if 1
+TEST(FineFTPTest, StoreUnique)
+{
+  const auto test_working_dir = std::filesystem::current_path();
+  const auto ftp_root_dir = test_working_dir / "ftp_root";
+  const auto local_root_dir = test_working_dir / "local_root";
+
+  constexpr int num_uploads = 3;
+
+  {
+    if (std::filesystem::exists(ftp_root_dir))
+      std::filesystem::remove_all(ftp_root_dir);
+
+    if (std::filesystem::exists(local_root_dir))
+      std::filesystem::remove_all(local_root_dir);
+
+    // Make sure that we start clean, so no old dir exists
+    ASSERT_FALSE(std::filesystem::exists(ftp_root_dir));
+    ASSERT_FALSE(std::filesystem::exists(local_root_dir));
+
+    std::filesystem::create_directory(ftp_root_dir);
+    std::filesystem::create_directory(local_root_dir);
+
+    // Make sure that we were able to create the dir
+    ASSERT_TRUE(std::filesystem::is_directory(ftp_root_dir));
+    ASSERT_TRUE(std::filesystem::is_directory(local_root_dir));
+  }
+
+  fineftp::FtpServer server(2121);
+  server.start(1);
+
+  server.addUserAnonymous(ftp_root_dir.string(), fineftp::Permission::All);
+
+  // Create a hello world.txt file in the local root dir and write "Hello World" into it
+  auto local_file = local_root_dir / "hello_world.txt";
+  {
+    std::ofstream ofs(local_file.string());
+    ofs << "Hello World";
+    ofs.close();
+  }
+
+  // Make sure that the file exists
+  ASSERT_TRUE(std::filesystem::exists(local_file));
+  ASSERT_TRUE(std::filesystem::is_regular_file(local_file));
+
+  // Upload using the STOU command
+  for (int i = 0; i < num_uploads; i++)
+  {
+    uploadWithStou(local_file.string(), "localhost", 2121);
+  }
+
+  // Make sure that we have num_uploads files in the ftp root dir, all having the same content but different names
+  {
+    int file_count = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(ftp_root_dir))
+    {
+      if (entry.is_regular_file())
+      {
+        file_count++;
+        // Check that the content is correct
+        std::ifstream ifs(entry.path().string());
+        const std::string content((std::istreambuf_iterator<char>(ifs)),
+                                  (std::istreambuf_iterator<char>()));
+        ASSERT_EQ(content, "Hello World");
+      }
+    }
+    ASSERT_EQ(file_count, num_uploads);
   }
 
   // Stop the server
