@@ -876,6 +876,10 @@ TEST(FineFTPTest, UploadAndRenameAnotherFile)
 #if 1
 TEST(FineFTPTest, UTF8Paths)
 {
+#if defined(_WIN32) && (defined(__MINGW32__) || defined(__MINGW64__))
+  GTEST_SKIP() << "Skipping UTF-8 path test on MinGW: Windows UTF-8 path support is MSVC-only";
+#endif
+
   const auto test_working_dir = std::filesystem::current_path();
   const auto ftp_root_dir     = test_working_dir / "ftp_root";
   const auto local_root_dir   = test_working_dir / "local_root";
@@ -942,7 +946,7 @@ TEST(FineFTPTest, UTF8Paths)
   // Create a small hello world file in the upload dir
   {
 #ifdef _WIN32
-    std::ofstream ofs(local_file_path.wstring());
+    std::ofstream ofs(local_file_path.wstring().c_str());
 #else // _WIN32
     std::ofstream ofs(local_file_path.string());
 #endif // _WIN32
