@@ -124,6 +124,14 @@ namespace fineftp
 
     void sendFile               (const std::shared_ptr<ReadableFile>&          file);
 
+    void acceptDataConnection   (const std::function<void(const std::shared_ptr<asio::ip::tcp::socket>&)>& connected_handler);
+
+    bool validateDataConnection (const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
+
+    void closeDataAcceptor      ();
+
+    static void closeDataSocket (const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
+
     void addDataToBufferAndSend (const std::shared_ptr<std::vector<char>>&     data
                                , const std::shared_ptr<asio::ip::tcp::socket>& data_socket);
 
