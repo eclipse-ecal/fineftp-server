@@ -1,0 +1,128 @@
+name: MinGW
+
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE:     Release
+  INSTALL_PREFIX: _install
+  PROJECT_NAME:   fineftp-server
+
+jobs:
+  build-mingw:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        library_type: [static, shared]
+
+    runs-on: windows-2025
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        submodules:  'true'
+        fetch-depth: 0
+
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        path-type: inherit
+        install: >-
+          git
+          base-devel
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+
+    - name: Set Variables
+      run: |
+        if [[ '${{ matrix.library_type }}' == 'static' ]]; then
+          echo "build_shared_libs=OFF"  >> "$GITHUB_ENV"
+          echo "package_postfix=static" >> "$GITHUB_ENV"
+        else
+          echo "build_shared_libs=ON"   >> "$GITHUB_ENV"
+          echo "package_postfix=shared" >> "$GITHUB_ENV"
+          echo "${GITHUB_WORKSPACE}/_build/bin" >> "$GITHUB_PATH"
+          echo "${GITHUB_WORKSPACE}/${INSTALL_PREFIX}/bin" >> "$GITHUB_PATH"
+        fi
+
+    ############################################
+    # Test-compile the project
+    ############################################
+
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: |
+           cmake -B "${GITHUB_WORKSPACE}/_build" \
+                 -G Ninja \
+                 -DFINEFTP_SERVER_BUILD_TESTS=ON \
+                 -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+                 -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_PREFIX}" \
+                 -DBUILD_SHARED_LIBS=${build_shared_libs}
+
+    - name: Build
+      # Build your program with the given configuration
+      run: cmake --build "${GITHUB_WORKSPACE}/_build" --parallel
+
+    - name: Install
+      run: cmake --install "${GITHUB_WORKSPACE}/_build"
+
+    - name: Run Tests
+      run: ctest --test-dir "${GITHUB_WORKSPACE}/_build" -C Release -V
+
+    - name: Read Project Version from CMakeCache
+      id: project-version
+      run: |
+        cmake_project_version_string=$(cat "${GITHUB_WORKSPACE}/_build/CMakeCache.txt" | grep "^CMAKE_PROJECT_VERSION:")
+        arr=(${cmake_project_version_string//=/ })
+        cmake_project_version=${arr[1]}
+        echo "cmake_project_version=$cmake_project_version"  >> "$GITHUB_OUTPUT"
+
+    - name: Upload binaries
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ env.PROJECT_NAME }}-${{ steps.project-version.outputs.cmake_project_version }}-windows-x64-mingw-${{ matrix.library_type }}
+        path: ${{github.workspace}}/${{env.INSTALL_PREFIX}}
+
+    ############################################
+    # Test if our binary can be linked against
+    ############################################
+
+    - name: Compile integration test (Release)
+      run: |
+           cmake -B "${GITHUB_WORKSPACE}/samples/integration_test/_build/release" \
+                 -G Ninja \
+                 -DCMAKE_BUILD_TYPE=Release \
+             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_PREFIX}"
+           cmake --build "${GITHUB_WORKSPACE}/samples/integration_test/_build/release" --parallel
+      working-directory: ${{ github.workspace }}/samples/integration_test
+
+    - name: Run integration test (Release)
+      run: ./integration_test.exe
+      working-directory: ${{ github.workspace }}/samples/integration_test/_build/release
+
+    - name: Compile integration test (Debug)
+      run: |
+           cmake -B "${GITHUB_WORKSPACE}/samples/integration_test/_build/debug" \
+                 -G Ninja \
+                 -DCMAKE_BUILD_TYPE=Debug \
+             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_PREFIX}"
+           cmake --build "${GITHUB_WORKSPACE}/samples/integration_test/_build/debug" --parallel
+      working-directory: ${{ github.workspace }}/samples/integration_test
+
+    - name: Run integration test (Debug)
+      run: ./integration_test.exe
+      working-directory: ${{ github.workspace }}/samples/integration_test/_build/debug
