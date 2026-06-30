@@ -942,7 +942,7 @@ TEST(FineFTPTest, UTF8Paths)
   // Create a small hello world file in the upload dir
   {
 #ifdef _WIN32
-    std::ofstream ofs(local_file_path.wstring());
+    std::ofstream ofs(local_file_path.wstring().c_str());
 #else // _WIN32
     std::ofstream ofs(local_file_path.string());
 #endif // _WIN32
