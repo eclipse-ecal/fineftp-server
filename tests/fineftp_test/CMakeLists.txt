@@ -28,7 +28,9 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE
     fineftp::server
     GTest::gtest_main
-    asio::asio)
+    asio::asio
+    $<$<BOOL:${WIN32}>:ws2_32>
+    $<$<BOOL:${WIN32}>:wsock32>)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
