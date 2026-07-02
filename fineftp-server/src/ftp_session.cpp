@@ -85,10 +85,7 @@ namespace fineftp
     auto data_socket = data_socket_weakptr_.lock();
     if (data_socket)
     {
-      // Properly close data socket
-      asio::error_code ec;
-      data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-      data_socket->close(ec);
+      closeDataSocket(data_socket);
     }
 
     completion_handler_();
@@ -186,19 +183,14 @@ namespace fineftp
                               me->output_ << "Control connection closed by client." << std::endl;
                             }
 #endif // !NDEBUG
-                            // Close the data connection, if it is open
-                            {
-                              asio::error_code ec_;
-                              me->data_acceptor_.close(ec_);
-                            }
+                            me->closeDataAcceptor();
 
                             asio::post(me->data_socket_strand_, [me]()
                             {
                               auto data_socket = me->data_socket_weakptr_.lock();
                               if (data_socket)
                               { 
-                                asio::error_code ec_;
-                                data_socket->close(ec_);
+                                me->closeDataSocket(data_socket);
                               }
                             });
 
@@ -422,15 +414,24 @@ namespace fineftp
 
     if (data_acceptor_.is_open())
     {
-      asio::error_code ec;
-      data_acceptor_.close(ec);
-      if (ec)
-      {
-        error_ << "Error closing data acceptor: " << ec.message() << std::endl;
-      }
+      closeDataAcceptor();
     }
 
-    const asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), 0);
+    asio::ip::tcp::endpoint endpoint;
+    {
+      // Get local endpoint of command socket
+      asio::error_code ec;
+      const auto command_local_endpoint = command_socket_.local_endpoint(ec);
+      if (ec)
+      {
+        error_ << "Error getting command socket local endpoint: " << ec.message() << std::endl;
+        sendFtpMessage(FtpReplyCode::SERVICE_NOT_AVAILABLE, "Failed to enter passive mode.");
+        return;
+      }
+
+      // Listen only on the interface used by the control connection.
+      endpoint = asio::ip::tcp::endpoint(command_local_endpoint.address(), 0);
+    }
 
     {
       asio::error_code ec;
@@ -1303,22 +1304,96 @@ namespace fineftp
   // FTP data-socket send
   ////////////////////////////////////////////////////////
 
-  void FtpSession::sendDirectoryListing(const std::map<std::string, Filesystem::FileStatus>& directory_content)
+  void FtpSession::acceptDataConnection(const std::function<void(const std::shared_ptr<asio::ip::tcp::socket>&)>& connected_handler)
   {
     auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
 
     data_acceptor_.async_accept(*data_socket
-                              , data_socket_strand_.wrap([data_socket, directory_content, me = shared_from_this()](auto ec)
+                              , data_socket_strand_.wrap([data_socket, connected_handler, me = shared_from_this()](auto ec)
                                 {
                                   if (ec)
                                   {
                                     me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
                                     return;
                                   }
-   
-                                  me->data_socket_weakptr_ = data_socket;
 
-                                  // TODO: close acceptor after connect?
+                                  // A PASV port is single-use for one data connection.
+                                  me->closeDataAcceptor();
+
+                                  // RFC 2577: reject data connections from a different client host.
+                                  if (!me->validateDataConnection(data_socket))
+                                  {
+                                    me->closeDataSocket(data_socket);
+                                    me->sendFtpMessage(FtpReplyCode::ERROR_OPENING_DATA_CONNECTION, "Data connection rejected");
+                                    return;
+                                  }
+
+                                  me->data_socket_weakptr_ = data_socket;
+                                  connected_handler(data_socket);
+                                }));
+  }
+
+  bool FtpSession::validateDataConnection(const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+  {
+    asio::ip::tcp::endpoint data_endpoint;
+    {
+      asio::error_code ec;
+      data_endpoint = data_socket->remote_endpoint(ec);
+      if (ec)
+      {
+        error_ << "Error getting data socket remote endpoint: " << ec.message() << std::endl;
+        return false;
+      }
+    }
+
+    asio::ip::tcp::endpoint command_endpoint;
+    {
+      asio::error_code ec;
+      command_endpoint = command_socket_.remote_endpoint(ec);
+      if (ec)
+      {
+        error_ << "Error getting command socket remote endpoint: " << ec.message() << std::endl;
+        return false;
+      }
+    }
+
+    // Plain FTP cannot authenticate the data connection; source IP is the protocol-compatible check.
+    if (data_endpoint.address() != command_endpoint.address())
+    {
+      error_ << "Rejected data connection from " << data_endpoint.address().to_string()
+             << "; expected " << command_endpoint.address().to_string() << std::endl;
+      return false;
+    }
+
+    return true;
+  }
+
+  void FtpSession::closeDataAcceptor()
+  {
+    if (!data_acceptor_.is_open())
+    {
+      return;
+    }
+
+    asio::error_code ec;
+    data_acceptor_.close(ec);
+    if (ec)
+    {
+      error_ << "Error closing data acceptor: " << ec.message() << std::endl;
+    }
+  }
+
+  void FtpSession::closeDataSocket(const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+  {
+    asio::error_code ec;
+    data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+    data_socket->close(ec);
+  }
+
+  void FtpSession::sendDirectoryListing(const std::map<std::string, Filesystem::FileStatus>& directory_content)
+  {
+    acceptDataConnection([directory_content, me = shared_from_this()](const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+                         {
                                   // Create a Unix-like file list
                                   std::stringstream stream; // NOLINT(misc-const-correctness) Reason: False detection, this cannot be made const
                                   for (const auto& entry : directory_content)
@@ -1343,24 +1418,13 @@ namespace fineftp
                                   // Send the string out
                                   me->addDataToBufferAndSend(dir_listing_rawdata, data_socket);
                                   me->addDataToBufferAndSend(std::shared_ptr<std::vector<char>>(), data_socket);// Nullpointer indicates end of transmission
-                                }));
+                         });
   }
 
   void FtpSession::sendNameList(const std::map<std::string, Filesystem::FileStatus>& directory_content)
   {
-    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
-
-    data_acceptor_.async_accept(*data_socket
-                              , data_socket_strand_.wrap([data_socket, directory_content, me = shared_from_this()](auto ec)
-                                {
-                                  if (ec)
-                                  {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
-                                    return;
-                                  }
-    
-                                  me->data_socket_weakptr_ = data_socket;
-
+    acceptDataConnection([directory_content, me = shared_from_this()](const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+                         {
                                   // Create a file list
                                   std::stringstream stream; // NOLINT(misc-const-correctness) Reason: False detection, this cannot be made const
                                   for (const auto& entry : directory_content)
@@ -1378,22 +1442,13 @@ namespace fineftp
                                   // Send the string out
                                   me->addDataToBufferAndSend(dir_listing_rawdata, data_socket);
                                   me->addDataToBufferAndSend(std::shared_ptr<std::vector<char>>(), data_socket);// Nullpointer indicates end of transmission
-                                }));
+                         });
   }
 
   void FtpSession::sendFile(const std::shared_ptr<ReadableFile>& file)
   {
-    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
-
-    data_acceptor_.async_accept(*data_socket
-                              , data_socket_strand_.wrap([data_socket, file, me = shared_from_this()](auto ec)
-                                {
-                                  if (ec)
-                                  {
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted: " + ec.message());
-                                    return;
-                                  }
-
+    acceptDataConnection([file, me = shared_from_this()](const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+                         {
                                   if (file->size() == 0U)
                                   {
                                     me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
@@ -1406,8 +1461,6 @@ namespace fineftp
                                   }
                                   else
                                   {
-                                    me->data_socket_weakptr_ = data_socket;
-
                                     // Send the file
                                     asio::async_write(*data_socket
                                                     , asio::buffer(file->data(), file->size())
@@ -1419,12 +1472,7 @@ namespace fineftp
                                                         }
                                                         else
                                                         {
-                                                          // Close Data Socket properly
-                                                          {
-                                                            asio::error_code errc;
-                                                            data_socket->shutdown(asio::socket_base::shutdown_both, errc);
-                                                            data_socket->close(errc);
-                                                          }
+                                                          me->closeDataSocket(data_socket);
 
                                                           // Ugly work-around:
                                                           // An FTP client implementation has been observed to close the data connection
@@ -1447,7 +1495,7 @@ namespace fineftp
                                                         }
                                                       });
                                   }
-                                }));
+                         });
   }
 
   void FtpSession::addDataToBufferAndSend(const std::shared_ptr<std::vector<char>>& data, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
@@ -1499,12 +1547,7 @@ namespace fineftp
           // we got to the end of transmission
           me->data_buffer_.pop_front();
 
-          // Close Data Socket properly
-          {
-            asio::error_code ec;
-            data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-            data_socket->close(ec);
-          }
+          closeDataSocket(data_socket);
 
           me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
         }
@@ -1517,21 +1560,10 @@ namespace fineftp
 
   void FtpSession::receiveFile(const std::shared_ptr<WriteableFile>& file)
   {
-    auto data_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
-
-    data_acceptor_.async_accept(*data_socket
-                              , data_socket_strand_.wrap([data_socket, file, me = shared_from_this()](auto ec)
-                                {
-                                  if (ec)
-                                  {
-                                    me->error_ << "Data transfer aborted: " << ec.message() << std::endl;
-                                    me->sendFtpMessage(FtpReplyCode::TRANSFER_ABORTED, "Data transfer aborted");
-                                    return;
-                                  }
-
-                                  me->data_socket_weakptr_ = data_socket;
+    acceptDataConnection([file, me = shared_from_this()](const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
+                         {
                                   me->receiveDataFromSocketAndWriteToFile(file, data_socket);
-                                }));
+                         });
   }
 
   void FtpSession::receiveDataFromSocketAndWriteToFile(const std::shared_ptr<WriteableFile>& file, const std::shared_ptr<asio::ip::tcp::socket>& data_socket)
@@ -1573,9 +1605,7 @@ namespace fineftp
                              {
                                file->close();
                                me->sendFtpMessage(FtpReplyCode::CLOSING_DATA_CONNECTION, "Done");
-                               asio::error_code ec;
-                               data_socket->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-                               data_socket->close();
+                               me->closeDataSocket(data_socket);
                              });
   }
 

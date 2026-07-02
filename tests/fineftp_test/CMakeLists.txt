@@ -5,11 +5,13 @@ set(CMAKE_FIND_PACKAGE_PREFER_CONFIG  TRUE)
 find_package(Threads REQUIRED)
 find_package(GTest   REQUIRED)
 find_package(fineftp REQUIRED)
+find_package(asio    REQUIRED)
 
 set(FINEFTP_SERVER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../fineftp-server/src")
 
 set(sources
   src/fineftp_stresstest.cpp
+  src/pasv_security_test.cpp
   src/permission_test.cpp
   src/stou_helper.h
 )
@@ -25,9 +27,17 @@ add_executable(${PROJECT_NAME} ${sources} ${fineftp_server_sources})
 target_link_libraries(${PROJECT_NAME}
   PRIVATE
     fineftp::server
-    GTest::gtest_main)
+    GTest::gtest_main
+    asio::asio
+    $<$<BOOL:${WIN32}>:ws2_32>
+    $<$<BOOL:${WIN32}>:wsock32>)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+
+target_compile_definitions(${PROJECT_NAME}
+  PRIVATE
+    _WIN32_WINNT=0x0601
+)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${FINEFTP_SERVER_SRC_DIR}
